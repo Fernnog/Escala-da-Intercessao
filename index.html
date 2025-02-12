@@ -3,23 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salvar Texto</title>
-    <link rel="stylesheet" href="styles.css"> <!-- Link para o arquivo CSS -->
+    <title>Salvar Texto com Título e Pesquisa</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <h1>Salvar Texto</h1>
         <form id="textForm">
-            <label for="texto">Digite seu texto:</label><br>
-            <textarea id="texto" name="texto" rows="4" cols="50" placeholder="Digite algo..."></textarea><br><br>
+            <label for="titulo">Título:</label><br>
+            <input type="text" id="titulo" name="titulo" placeholder="Digite o título..." required><br><br>  <!- Adicionado campo de título -->
+
+            <label for="texto">Texto:</label><br>
+            <textarea id="texto" name="texto" rows="4" cols="50" placeholder="Digite o texto..."></textarea><br><br>
             <button type="submit">Salvar</button>
         </form>
-        <p id="mensagem"></p> <!-- Mensagem de feedback -->
+        <p id="mensagem"></p>
 
         <h2>Textos Salvos</h2>
+
+        <input type="text" id="searchInput" placeholder="Pesquisar por título..."> <!- Adicionada caixa de pesquisa -->
+
         <table id="textosTable">
             <thead>
                 <tr>
+                    <th>Título</th>  <!- Adicionada coluna de título -->
                     <th>Texto</th>
                     <th>Data/Hora</th>
                 </tr>
@@ -30,10 +37,10 @@
         </table>
     </div>
 
-    <!-- Inclua os SDKs do Firebase (Certifique-se de usar as versões mais recentes) -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <!--  SDKs do Firebase (use versões mais recentes) -->
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js"></script>
 
-    <script src="script.js" type="module"></script> <!-- Link para o arquivo JavaScript, com type="module" -->
+    <script src="script.js" type="module"></script>
 </body>
 </html>

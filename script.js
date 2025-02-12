@@ -1,6 +1,6 @@
 // Importe as funções que você precisa dos SDKs que você importou
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js";
-import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js";
+import * as firestoreCompat from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"; // Importação modificada
 
 // Suas configurações do Firebase
 const firebaseConfig = {
@@ -17,7 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Inicialize o Firestore
-const db = getFirestore(app);
+const db = firestoreCompat.getFirestore(app); // Use firestoreCompat.getFirestore
 
 // Função para exibir os textos na tabela
 function exibirTextosNaTabela(textos) {
@@ -42,7 +42,7 @@ function exibirTextosNaTabela(textos) {
 }
 
 // Listener para manter a tabela atualizada em tempo real
-onSnapshot(collection(db, "PerolaRara"), (snapshot) => {
+firestoreCompat.onSnapshot(firestoreCompat.collection(db, "PerolaRara"), (snapshot) => { // Use firestoreCompat.onSnapshot e firestoreCompat.collection
     console.log("**** onSnapshot FOI EXECUTADO! **** Snapshot:", snapshot); // Log adicionado para diagnóstico
     let textos = [];
     snapshot.forEach(doc => {
@@ -65,7 +65,7 @@ document.getElementById('textForm').addEventListener('submit', function (event) 
     console.log("### Tentando salvar texto:", texto); // Log adicionado para diagnóstico
 
     // Salva o texto no Firestore
-    addDoc(collection(db, "PerolaRara"), {
+    firestoreCompat.addDoc(firestoreCompat.collection(db, "PerolaRara"), { // Use firestoreCompat.addDoc e firestoreCompat.collection
         texto: texto,
         timestamp: new Date()
     })

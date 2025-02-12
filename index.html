@@ -1,47 +1,64 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>App com Autenticação e Firestore</title>
+<title>App com Autenticação, Firestore & Analytics</title>
 <style>
+  /* Estilização básica */
   body {
     font-family: sans-serif;
     margin: 0;
-    padding: 0;
+    padding: 20px;
+    background: #f2f2f2;
   }
   .container {
-    width: 80%;
-    margin: 20px auto;
+    max-width: 500px;
+    margin: auto;
+    background: #fff;
+    padding: 20px;
     text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   }
   input, button {
     font-size: 1rem;
     padding: 10px;
-    margin-bottom: 10px;
+    margin: 10px 0;
     width: 100%;
-    max-width: 400px;
+    box-sizing: border-box;
   }
   button {
     cursor: pointer;
+    border: none;
+    background: #3498db;
+    color: white;
+    border-radius: 5px;
+  }
+  #btnLogout {
+    background: #e74c3c;
   }
   #authStatus {
-    margin: 20px 0;
+    margin: 15px 0;
     font-weight: bold;
   }
 </style>
 <div class="container">
-  <h1>Autenticação</h1>
-  <input type="email" id="email" placeholder="Email">
-  <input type="password" id="password" placeholder="Senha">
-  <div>
-    <button id="btnRegister">Registrar</button>
-    <button id="btnLogin">Entrar</button>
-    <button id="btnLogout" style="display:none;">Sair</button>
+  <h1>Autenticação e Firestore</h1>
+  <!-- Seção de Autenticação -->
+  <div id="authSection">
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Senha">
+    <div>
+      <button id="btnRegister">Registrar</button>
+      <button id="btnLogin">Entrar</button>
+      <button id="btnLogout" style="display:none;">Sair</button>
+    </div>
+    <p id="authStatus">Nenhum usuário autenticado</p>
   </div>
-  <p id="authStatus">Nenhum usuário autenticado</p>
   <hr>
-  <h1>Salvar Texto no Firestore</h1>
+  <!-- Seção para salvar texto no Firestore -->
+  <h2>Salvar Texto</h2>
   <input type="text" id="texto" placeholder="Digite algo aqui">
   <button id="salvarBtn">Salvar Texto</button>
   <p id="mensagem"></p>
 </div>
-<!-- Nosso script principal que importa os módulos do Firebase -->
+<!-- Importa o script principal utilizando módulo -->
 <script type="module" src="script.js"></script>

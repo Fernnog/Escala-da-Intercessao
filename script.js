@@ -1,6 +1,10 @@
-// Importa os módulos necessários da versão modular do Firebase
+/* script.js */
+
+// Importa os módulos necessários (Firebase App, Analytics, Firestore e Auth)
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
 
 import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
@@ -18,11 +22,11 @@ onAuthStateChanged
 
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-// Configuração do Firebase – substitua pelos dados do seu projeto
+// Configuração do Firebase (use os dados corretos do seu projeto)
 
 const firebaseConfig = {
 
-apiKey: "SUAAPIKEY_AQUI",
+apiKey: "AIzaSyDG1NYs6CM6TDfGAPXSz1ho8_-NWs28zSg",
 
 authDomain: "perola-rara.firebaseapp.com",
 
@@ -38,9 +42,11 @@ measurementId: "G-VHVMR10RSQ"
 
 };
 
-// Inicializa o Firebase, o Firestore e o Auth
+// Inicializa o Firebase, Analytics, Firestore e Auth
 
 const app = initializeApp(firebaseConfig);
+
+const analytics = getAnalytics(app);
 
 const db = getFirestore(app);
 
@@ -83,7 +89,6 @@ return;
 createUserWithEmailAndPassword(auth, email, password)
 
 .then((userCredential) => {
-  // Usuário registrado com sucesso.
   console.log("Usuário registrado:", userCredential.user.email);
 })
 .catch((error) => {
@@ -92,7 +97,7 @@ createUserWithEmailAndPassword(auth, email, password)
 });
 });
 
-// Função para fazer login com usuário existente
+// Função para login com usuário existente
 
 btnLogin.addEventListener('click', () => {
 
@@ -109,7 +114,6 @@ return;
 signInWithEmailAndPassword(auth, email, password)
 
 .then((userCredential) => {
-  // Login efetuado com sucesso.
   console.log("Usuário logado:", userCredential.user.email);
 })
 .catch((error) => {
@@ -152,7 +156,7 @@ btnRegister.style.display = "inline-block";
 
 });
 
-// Função para salvar o texto digitado no Firestore (somente se o usuário estiver autenticado)
+// Função para salvar o texto digitado no Firestore (apenas se o usuário estiver autenticado)
 
 salvarBtn.addEventListener('click', () => {
 
@@ -174,7 +178,7 @@ mensagem.style.color = 'red';
 return;
 }
 
-// Podemos incluir o ID do usuário no documento, se desejar, para rastrear os dados por usuário:
+// Adiciona um novo documento na coleção "TestesMobile", incluindo informações do usuário
 
 addDoc(collection(db, "TestesMobile"), {
 
@@ -189,7 +193,7 @@ timestamp: new Date()
 console.log("Texto salvo com ID:", docRef.id);
 mensagem.textContent = 'Texto salvo com sucesso!';
 mensagem.style.color = 'green';
-textoInput.value = ''; // Limpa o campo
+textoInput.value = ''; // Limpa o campo de entrada
 })
 
 .catch((error) => {

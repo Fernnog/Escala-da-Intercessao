@@ -1,11 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Teste Firebase</title>
+    <title>Teste Salvar Firebase (Mobile)</title>
+    <style>
+        body { font-family: sans-serif; }
+        .container { width: 80%; margin: 20px auto; text-align: center; }
+    </style>
 </head>
 <body>
-    <h1>Teste Firebase</h1>
-    <p id="mensagem"></p>
+    <div class="container">
+        <h1>Salvar Texto Rápido</h1>
+        <input type="text" id="texto" placeholder="Digite algo aqui" style="width: 100%; padding: 10px; margin-bottom: 10px;"><br>
+        <button id="salvarBtn" style="padding: 10px 20px;">Salvar Texto</button>
+        <p id="mensagem" style="margin-top: 20px;"></p>
+    </div>
 
     <!-- SDKs do Firebase (use versões mais recentes 9.x.x) -->
     <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>

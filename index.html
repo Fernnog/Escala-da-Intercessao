@@ -1,43 +1,13 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salvar Texto com Título e Pesquisa</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Teste Firebase</title>
 </head>
 <body>
-    <div class="container">
-        <h1>Salvar Texto</h1>
-        <form id="textForm">
-            <label for="titulo">Título:</label><br>
-            <input type="text" id="titulo" name="titulo" placeholder="Digite o título..." required><br><br>  <!- Adicionado campo de título -->
+    <h1>Teste Firebase</h1>
+    <p id="mensagem"></p>
 
-            <label for="texto">Texto:</label><br>
-            <textarea id="texto" name="texto" rows="4" cols="50" placeholder="Digite o texto..."></textarea><br><br>
-            <button type="submit">Salvar</button>
-        </form>
-        <p id="mensagem"></p>
-
-        <h2>Textos Salvos</h2>
-
-        <input type="text" id="searchInput" placeholder="Pesquisar por título..."> <!- Adicionada caixa de pesquisa -->
-
-        <table id="textosTable">
-            <thead>
-                <tr>
-                    <th>Título</th>  <!- Adicionada coluna de título -->
-                    <th>Texto</th>
-                    <th>Data/Hora</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Os textos serão adicionados aqui dinamicamente -->
-            </tbody>
-        </table>
-    </div>
-
-    <!--  SDKs do Firebase (use versões mais recentes) -->
+    <!-- SDKs do Firebase (use versões mais recentes 9.x.x) -->
     <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js"></script>
 

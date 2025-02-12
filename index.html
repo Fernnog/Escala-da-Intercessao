@@ -15,8 +15,21 @@
             <button type="submit">Salvar</button>
         </form>
         <p id="mensagem"></p> <!-- Mensagem de feedback -->
+
+        <h2>Textos Salvos</h2>
+        <table id="textosTable">
+            <thead>
+                <tr>
+                    <th>Texto</th>
+                    <th>Data/Hora</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Os textos serão adicionados aqui dinamicamente -->
+            </tbody>
+        </table>
     </div>
-    
+
     <!-- Inclua os SDKs do Firebase (Certifique-se de usar as versões mais recentes) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>

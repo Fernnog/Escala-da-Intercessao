@@ -21,11 +21,18 @@ const db = getFirestore(app);
 
 // Função para exibir os textos na tabela
 function exibirTextosNaTabela(textos) {
+    console.log("##### exibirTextosNaTabela CHAMADA! Textos:", textos); // Log adicionado para diagnóstico
     const tabela = document.getElementById('textosTable').getElementsByTagName('tbody')[0];
+    console.log("Tabela selecionada:", tabela); // Log adicionado para diagnóstico
+    if (!tabela) {
+        console.error("Corpo da tabela (tbody) não encontrado!"); // Log de erro se o tbody não for encontrado
+        return; // Sai da função se não encontrar o tbody
+    }
     tabela.innerHTML = ''; // Limpa a tabela
 
     textos.forEach(texto => {
         let linha = tabela.insertRow();
+        console.log("Linha criada:", linha); // Log adicionado para diagnóstico
         let colunaTexto = linha.insertCell();
         let colunaData = linha.insertCell();
 
@@ -36,6 +43,7 @@ function exibirTextosNaTabela(textos) {
 
 // Listener para manter a tabela atualizada em tempo real
 onSnapshot(collection(db, "PerolaRara"), (snapshot) => {
+    console.log("**** onSnapshot FOI EXECUTADO! **** Snapshot:", snapshot); // Log adicionado para diagnóstico
     let textos = [];
     snapshot.forEach(doc => {
         textos.push({
@@ -53,6 +61,8 @@ document.getElementById('textForm').addEventListener('submit', function (event) 
 
     // Pega o valor do texto
     const texto = document.getElementById('texto').value;
+
+    console.log("### Tentando salvar texto:", texto); // Log adicionado para diagnóstico
 
     // Salva o texto no Firestore
     addDoc(collection(db, "PerolaRara"), {

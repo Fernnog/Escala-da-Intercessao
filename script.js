@@ -1,6 +1,6 @@
 // Importe as funções que você precisa dos SDKs que você importou
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getFirestore, collection, setDoc, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js";
 
 // Suas configurações do Firebase
 const firebaseConfig = {
@@ -19,19 +19,20 @@ const app = initializeApp(firebaseConfig);
 // Inicialize o Firestore
 const db = getFirestore(app);
 
+// Exemplo de como salvar dados (adapte para o seu formulário)
 document.getElementById('textForm').addEventListener('submit', function (event) {
     event.preventDefault(); // Impede o envio do formulário
 
     // Pega o valor do texto
     const texto = document.getElementById('texto').value;
 
-    // Salva o texto no Firestore na coleção "PerolaRara" com o ID "mHqaY3YJ7sqOJsFfnLgb"
-    setDoc(doc(db, "PerolaRara", "mHqaY3YJ7sqOJsFfnLgb"), {
+    // Salva o texto no Firestore
+    addDoc(collection(db, "PerolaRara"), {
         texto: texto,
         timestamp: new Date()
     })
-    .then(() => {
-        console.log("Documento escrito com ID: mHqaY3YJ7sqOJsFfnLgb");
+    .then((docRef) => {
+        console.log("Documento escrito com ID: ", docRef.id);
         document.getElementById('mensagem').textContent = 'Texto salvo com sucesso!';
         document.getElementById('mensagem').style.color = 'green';
     })

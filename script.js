@@ -1,6 +1,6 @@
 // Importe as funções que você precisa dos SDKs que você importou
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js";
-import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js";
+import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js";
 
 // Suas configurações do Firebase
 const firebaseConfig = {
@@ -19,7 +19,35 @@ const app = initializeApp(firebaseConfig);
 // Inicialize o Firestore
 const db = getFirestore(app);
 
-// Exemplo de como salvar dados (adapte para o seu formulário)
+// Função para exibir os textos na tabela
+function exibirTextosNaTabela(textos) {
+    const tabela = document.getElementById('textosTable').getElementsByTagName('tbody')[0];
+    tabela.innerHTML = ''; // Limpa a tabela
+
+    textos.forEach(texto => {
+        let linha = tabela.insertRow();
+        let colunaTexto = linha.insertCell();
+        let colunaData = linha.insertCell();
+
+        colunaTexto.innerHTML = texto.texto;
+        colunaData.innerHTML = new Date(texto.timestamp.seconds * 1000).toLocaleString(); // Converte o timestamp para data/hora
+    });
+}
+
+// Listener para manter a tabela atualizada em tempo real
+onSnapshot(collection(db, "PerolaRara"), (snapshot) => {
+    let textos = [];
+    snapshot.forEach(doc => {
+        textos.push({
+            id: doc.id,
+            texto: doc.data().texto,
+            timestamp: doc.data().timestamp
+        });
+    });
+    exibirTextosNaTabela(textos);
+});
+
+// Evento de envio do formulário
 document.getElementById('textForm').addEventListener('submit', function (event) {
     event.preventDefault(); // Impede o envio do formulário
 

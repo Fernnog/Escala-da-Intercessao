@@ -16,14 +16,29 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = firestoreCompat.getFirestore(app);
 
-// Teste simples: Tentar ler dados (mesmo que não existam)
-firestoreCompat.collection(db, "PerolaRara").get()
-  .then(() => {
-    document.getElementById('mensagem').textContent = 'Conexão com o Firebase OK!';
-    document.getElementById('mensagem').style.color = 'green';
-  })
-  .catch((error) => {
-    document.getElementById('mensagem').textContent = 'Erro na conexão com o Firebase: ' + error;
-    document.getElementById('mensagem').style.color = 'red';
-    console.error(error);
-  });
+// Evento de clique no botão "Salvar Texto"
+document.getElementById('salvarBtn').addEventListener('click', function() {
+    const textoParaSalvar = document.getElementById('texto').value;
+
+    if (textoParaSalvar.trim() === '') {
+        document.getElementById('mensagem').textContent = 'Digite algo antes de salvar!';
+        document.getElementById('mensagem').style.color = 'red';
+        return;
+    }
+
+    firestoreCompat.addDoc(firestoreCompat.collection(db, "TestesMobile"), { // Coleção "TestesMobile"
+        texto: textoParaSalvar,
+        timestamp: new Date()
+    })
+    .then((docRef) => {
+        console.log("Texto salvo com ID: ", docRef.id);
+        document.getElementById('mensagem').textContent = 'Texto salvo com sucesso!';
+        document.getElementById('mensagem').style.color = 'green';
+        document.getElementById('texto').value = ''; // Limpa o campo
+    })
+    .catch((error) => {
+        console.error("Erro ao salvar texto: ", error);
+        document.getElementById('mensagem').textContent = 'Erro ao salvar o texto.';
+        document.getElementById('mensagem').style.color = 'red';
+    });
+});

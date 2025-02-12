@@ -1,17 +1,47 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Teste Salvar Firebase (Mobile)</title>
+<title>App com Autenticação e Firestore</title>
 <style>
-  body { font-family: sans-serif; margin: 0; padding: 0; }
-  .container { width: 80%; margin: 20px auto; text-align: center; }
-  input, button { font-size: 1rem; padding: 10px; margin-bottom: 10px; }
-  button { padding: 10px 20px; cursor: pointer; }
+  body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+  .container {
+    width: 80%;
+    margin: 20px auto;
+    text-align: center;
+  }
+  input, button {
+    font-size: 1rem;
+    padding: 10px;
+    margin-bottom: 10px;
+    width: 100%;
+    max-width: 400px;
+  }
+  button {
+    cursor: pointer;
+  }
+  #authStatus {
+    margin: 20px 0;
+    font-weight: bold;
+  }
 </style>
 <div class="container">
-  <h1>Salvar Texto Rápido</h1>
-  <input type="text" id="texto" placeholder="Digite algo aqui" style="width: 100%; margin-bottom: 10px;"><br>
+  <h1>Autenticação</h1>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Senha">
+  <div>
+    <button id="btnRegister">Registrar</button>
+    <button id="btnLogin">Entrar</button>
+    <button id="btnLogout" style="display:none;">Sair</button>
+  </div>
+  <p id="authStatus">Nenhum usuário autenticado</p>
+  <hr>
+  <h1>Salvar Texto no Firestore</h1>
+  <input type="text" id="texto" placeholder="Digite algo aqui">
   <button id="salvarBtn">Salvar Texto</button>
-  <p id="mensagem" style="margin-top: 20px;"></p>
+  <p id="mensagem"></p>
 </div>
-<!-- Apenas nosso script principal, que importa os módulos do Firebase -->
+<!-- Nosso script principal que importa os módulos do Firebase -->
 <script type="module" src="script.js"></script>

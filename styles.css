@@ -1,89 +1,116 @@
-/* Estilos anteriores (mantidos) */
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+// Importações (use versões mais recentes 9.x.x)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js";
+import * as firestoreCompat from "https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js";
+
+// Configuração do Firebase (SUAS CREDENCIAIS)
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_AUTH_DOMAIN",
+  projectId: "SEU_PROJECT_ID",
+  storageBucket: "SEU_STORAGE_BUCKET",
+  messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+  appId: "SEU_APP_ID",
+  measurementId: "SEU_MEASUREMENT_ID"
+};
+
+// Inicializa o Firebase
+const app = initializeApp(firebaseConfig);
+const db = firestoreCompat.getFirestore(app);
+
+// Função para exibir os textos na tabela (atualizada para pesquisa)
+function exibirTextosNaTabela(textos) {
+    const tabela = document.getElementById('textosTable').getElementsByTagName('tbody')[0];
+    if (!tabela) {
+        console.error("Corpo da tabela (tbody) não encontrado!");
+        return;
+    }
+    tabela.innerHTML = ''; // Limpa a tabela
+
+    textos.forEach(texto => {
+        let linha = tabela.insertRow();
+        let colunaTitulo = linha.insertCell();
+        let colunaTexto = linha.insertCell();
+        let colunaData = linha.insertCell();
+
+        colunaTitulo.innerHTML = texto.titulo; // Exibe o título
+        colunaTexto.innerHTML = texto.texto;
+        colunaData.innerHTML = new Date(texto.timestamp.seconds * 1000).toLocaleString();
+    });
+}
+// Função de filtro
+function filtrarTextos() {
+    const termoPesquisa = document.getElementById('searchInput').value.toLowerCase();
+    const linhas = document.getElementById('textosTable').getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+    for (let i = 0; i < linhas.length; i++) {
+        const colunaTitulo = linhas[i].getElementsByTagName('td')[0]; // Pega a coluna do título
+        if (colunaTitulo) {
+            const textoTitulo = colunaTitulo.textContent || colunaTitulo.innerText;
+            if (textoTitulo.toLowerCase().indexOf(termoPesquisa) > -1) {
+                linhas[i].style.display = ""; // Mostra a linha
+            } else {
+                linhas[i].style.display = "none"; // Oculta a linha
+            }
+        }
+    }
 }
 
-.container {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    width: 400px; /* Aumentei um pouco a largura */
-    text-align: center;
-}
+// Listener para a caixa de pesquisa
+document.getElementById('searchInput').addEventListener('keyup', filtrarTextos);
 
-h1 {
-    margin-bottom: 20px;
-    font-size: 24px;
-    color: #333;
-}
+// Listener para o Firestore (com tratamento de erros)
+firestoreCompat.onSnapshot(firestoreCompat.collection(db, "PerolaRara"), (snapshot) => {
+    let textos = [];
+    snapshot.forEach(doc => {
+        textos.push({
+            id: doc.id,
+            titulo: doc.data().titulo, // Pega o título do documento
+            texto: doc.data().texto,
+            timestamp: doc.data().timestamp
+        });
+    });
+    exibirTextosNaTabela(textos);
+    filtrarTextos(); // Filtra os textos após carregar do banco
+}, (error) => { // Tratamento de erro
+    console.error("Erro ao ler dados do Firestore:", error);
+    document.getElementById('mensagem').textContent = 'Erro ao carregar os textos.';
+    document.getElementById('mensagem').style.color = 'red';
+    setTimeout(() => { document.getElementById('mensagem').textContent = ''; }, 5000);
+});
 
-/* Estilos para o campo de título e texto */
-input[type="text"],
-textarea {
-    width: calc(100% - 22px); /* Ajuste para o padding */
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
-    margin-bottom: 10px; /* Espaçamento entre os campos */
-}
+// Evento de envio do formulário (com tratamento de erros e texto vazio)
+document.getElementById('textForm').addEventListener('submit', function (event) {
+    event.preventDefault();
+    const titulo = document.getElementById('titulo').value;
+    const texto = document.getElementById('texto').value;
 
-textarea {
-    resize: vertical;
-}
+    if (titulo.trim() === '' || texto.trim() === '') {
+        document.getElementById('mensagem').textContent = 'Por favor, preencha o título e o texto.';
+        document.getElementById('mensagem').style.color = 'red';
+        setTimeout(() => { document.getElementById('mensagem').textContent = ''; }, 5000);
+        return;
+    }
 
-button {
-    background-color: #28a745;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    font-size: 16px;
-    cursor: pointer;
-    margin-top: 10px;
-}
+    firestoreCompat.addDoc(firestoreCompat.collection(db, "PerolaRara"), {
+        titulo: titulo, // Salva o título
+        texto: texto,
+        timestamp: new Date()
+    })
+    .then((docRef) => {
+        console.log("Documento escrito com ID: ", docRef.id);
+        document.getElementById('mensagem').textContent = 'Texto salvo com sucesso!';
+        document.getElementById('mensagem').style.color = 'green';
+        setTimeout(() => { document.getElementById('mensagem').textContent = ''; }, 5000);
 
-button:hover {
-    background-color: #218838;
-}
+        // Limpa os campos após salvar
+        document.getElementById('titulo').value = '';
+        document.getElementById('texto').value = '';
+    })
+    .catch((error) => {
+        console.error("Erro ao adicionar documento: ", error);
+        document.getElementById('mensagem').textContent = 'Erro ao salvar o texto.';
+        document.getElementById('mensagem').style.color = 'red';
+        setTimeout(() => { document.getElementById('mensagem').textContent = ''; }, 5000);
 
-#mensagem {
-    margin-top: 20px;
-    font-size: 14px;
-    color: #333;
-}
-
-/* Estilo para a caixa de pesquisa */
-#searchInput {
-    width: calc(100% - 22px); /* Ajuste para o padding */
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
-    margin-bottom: 10px;
-}
-
-/* Estilos da tabela (melhorados) */
-#textosTable {
-    width: 100%;
-    border-collapse: collapse; /* Remove espaçamento entre as células */
-    margin-top: 20px;
-}
-
-#textosTable th, #textosTable td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: left;
-}
-
-#textosTable th {
-    background-color: #f2f2f2; /* Cor de fundo para o cabeçalho */
-}
+    });
+});

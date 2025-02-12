@@ -1,8 +1,8 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 
-import * as firestoreCompat from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-// Configuração do Firebase – substitua pelos dados do seu projeto
+// Substitua os dados abaixo pelas credenciais do seu projeto Firebase
 
 const firebaseConfig = {
 
@@ -22,17 +22,15 @@ measurementId: "G-VHVMR10RSQ"
 
 };
 
-// Inicializa o Firebase
+// Inicializa o Firebase e o Firestore
 
 const app = initializeApp(firebaseConfig);
 
-const db = firestoreCompat.getFirestore(app);
+const db = getFirestore(app);
 
 // Função para salvar o texto digitado no Firestore
 
 function salvarTexto() {
-
-// Coleta o valor do input
 
 const textoInput = document.getElementById('texto');
 
@@ -40,7 +38,7 @@ const mensagem = document.getElementById('mensagem');
 
 const textoParaSalvar = textoInput.value;
 
-// Verifica se o campo não está vazio
+// Valida se o campo não está vazio
 
 if (textoParaSalvar.trim() === '') {
 
@@ -49,23 +47,20 @@ mensagem.style.color = 'red';
 return;
 }
 
-// Tenta adicionar um novo documento à coleção "TestesMobile"
+// Adiciona um novo documento à coleção "TestesMobile"
 
-firestoreCompat.addDoc(
+addDoc(collection(db, "TestesMobile"), {
 
-firestoreCompat.collection(db, "TestesMobile"),
-{
-  texto: textoParaSalvar,
-  timestamp: new Date()
-}
-)
+texto: textoParaSalvar,
+timestamp: new Date()
+})
 
 .then((docRef) => {
 
 console.log("Texto salvo com ID: ", docRef.id);
 mensagem.textContent = 'Texto salvo com sucesso!';
 mensagem.style.color = 'green';
-textoInput.value = ''; // Limpa o campo de texto
+textoInput.value = ''; // Limpa o campo de entrada
 })
 
 .catch((error) => {
@@ -80,4 +75,3 @@ mensagem.style.color = 'red';
 // Adiciona o evento de clique ao botão "Salvar Texto"
 
 document.getElementById('salvarBtn').addEventListener('click', salvarTexto);
-

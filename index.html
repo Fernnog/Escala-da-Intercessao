@@ -1,19 +1,17 @@
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Teste Salvar Firebase (Mobile)</title>
 <style>
   body { font-family: sans-serif; margin: 0; padding: 0; }
   .container { width: 80%; margin: 20px auto; text-align: center; }
-  input, button { font-size: 1rem; }
+  input, button { font-size: 1rem; padding: 10px; margin-bottom: 10px; }
+  button { padding: 10px 20px; cursor: pointer; }
 </style>
 <div class="container">
   <h1>Salvar Texto Rápido</h1>
-  <input type="text" id="texto" placeholder="Digite algo aqui" style="width: 100%; padding: 10px; margin-bottom: 10px;"><br>
-  <button id="salvarBtn" style="padding: 10px 20px;">Salvar Texto</button>
+  <input type="text" id="texto" placeholder="Digite algo aqui" style="width: 100%; margin-bottom: 10px;"><br>
+  <button id="salvarBtn">Salvar Texto</button>
   <p id="mensagem" style="margin-top: 20px;"></p>
 </div>
-<!-- SDKs do Firebase com a versão definida -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<!-- Nosso script principal com a lógica do Firebase -->
-<script src="script.js" type="module"></script>
+<!-- Apenas nosso script principal, que importa os módulos do Firebase -->
+<script type="module" src="script.js"></script>

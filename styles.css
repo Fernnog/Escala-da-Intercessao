@@ -1,0 +1,89 @@
+/* Estilos anteriores (mantidos) */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 400px; /* Aumentei um pouco a largura */
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+}
+
+/* Estilos para o campo de título e texto */
+input[type="text"],
+textarea {
+    width: calc(100% - 22px); /* Ajuste para o padding */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    margin-bottom: 10px; /* Espaçamento entre os campos */
+}
+
+textarea {
+    resize: vertical;
+}
+
+button {
+    background-color: #28a745;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+button:hover {
+    background-color: #218838;
+}
+
+#mensagem {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #333;
+}
+
+/* Estilo para a caixa de pesquisa */
+#searchInput {
+    width: calc(100% - 22px); /* Ajuste para o padding */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+/* Estilos da tabela (melhorados) */
+#textosTable {
+    width: 100%;
+    border-collapse: collapse; /* Remove espaçamento entre as células */
+    margin-top: 20px;
+}
+
+#textosTable th, #textosTable td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+#textosTable th {
+    background-color: #f2f2f2; /* Cor de fundo para o cabeçalho */
+}

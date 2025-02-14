@@ -1,64 +1,46 @@
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>App com Autenticação, Firestore & Analytics</title>
-<style>
-  /* Estilização básica */
-  body {
-    font-family: sans-serif;
-    margin: 0;
-    padding: 20px;
-    background: #f2f2f2;
-  }
-  .container {
-    max-width: 500px;
-    margin: auto;
-    background: #fff;
-    padding: 20px;
-    text-align: center;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  }
-  input, button {
-    font-size: 1rem;
-    padding: 10px;
-    margin: 10px 0;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  button {
-    cursor: pointer;
-    border: none;
-    background: #3498db;
-    color: white;
-    border-radius: 5px;
-  }
-  #btnLogout {
-    background: #e74c3c;
-  }
-  #authStatus {
-    margin: 15px 0;
-    font-weight: bold;
-  }
-</style>
-<div class="container">
-  <h1>Autenticação e Firestore</h1>
-  <!-- Seção de Autenticação -->
-  <div id="authSection">
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Senha">
-    <div>
-      <button id="btnRegister">Registrar</button>
-      <button id="btnLogin">Entrar</button>
-      <button id="btnLogout" style="display:none;">Sair</button>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salvar Texto com Título e Pesquisa</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Salvar Texto</h1>
+        <form id="textForm">
+            <label for="titulo">Título:</label><br>
+            <input type="text" id="titulo" name="titulo" placeholder="Digite o título..." required><br><br>
+
+            <label for="texto">Texto:</label><br>
+            <textarea id="texto" name="texto" rows="4" cols="50" placeholder="Digite o texto..."></textarea><br><br>
+            <button type="submit">Salvar</button>
+        </form>
+        <p id="mensagem"></p>
+
+        <h2>Textos Salvos</h2>
+
+        <input type="text" id="searchInput" placeholder="Pesquisar por título...">
+
+        <table id="textosTable">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Texto</th>
+                    <th>Data/Hora</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Os textos serão adicionados aqui dinamicamente -->
+            </tbody>
+        </table>
     </div>
-    <p id="authStatus">Nenhum usuário autenticado</p>
-  </div>
-  <hr>
-  <!-- Seção para salvar texto no Firestore -->
-  <h2>Salvar Texto</h2>
-  <input type="text" id="texto" placeholder="Digite algo aqui">
-  <button id="salvarBtn">Salvar Texto</button>
-  <p id="mensagem"></p>
-</div>
-<!-- Importa o script principal utilizando módulo -->
-<script type="module" src="script.js"></script>
+
+    <!--  SDKs do Firebase (use versões mais recentes 9.x.x) -->
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js"></script>
+
+    <script src="script.js" type="module"></script>
+</body>
+</html>

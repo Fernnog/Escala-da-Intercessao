@@ -35,6 +35,9 @@ let showDeadlineOnly = false;
 
 // ==== FUNÇÕES UTILITÁRIAS ====
 function formatDateToISO(date) {
+    if (!(date instanceof Date)) {
+        date = new Date(date); // Garante que seja um objeto Date
+    }
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -362,7 +365,14 @@ async function saveObservation(targetId) {
     const observationDateValue = dateInput.value;
 
     if (observationText !== "") {
-        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000));
+        let observationDateISO;
+        if (observationDateValue) {
+            // *** MODIFICAÇÃO IMPORTANTE AQUI ***
+            const selectedObservationDate = new Date(observationDateValue + "T00:00:00");
+            observationDateISO = formatDateToISO(selectedObservationDate);
+        } else {
+            observationDateISO = formatDateToISO(new Date()); // Usa a data atual se nenhum valor for selecionado
+        }
         const userId = auth.currentUser.uid;
         const targetRef = doc(db, "users", userId, "prayerTargets", targetId);
 
@@ -372,7 +382,7 @@ async function saveObservation(targetId) {
             if (targetDoc.exists()) {
                 const targetData = targetDoc.data();
                 let updatedObservations = targetData.observations || [];
-                updatedObservations.push({ date: observationDate, observation: observationText });
+                updatedObservations.push({ date: observationDateISO, observation: observationText });
 
                 await updateDoc(targetRef, { observations: updatedObservations });
                 await fetchPrayerTargets(userId); // Refresh targets from Firestore
@@ -413,15 +423,26 @@ document.getElementById('hasDeadline').addEventListener('change', function() {
 document.getElementById("prayerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const hasDeadline = document.getElementById("hasDeadline").checked;
-    const deadlineDate = hasDeadline ? formatDateToISO(new Date(document.getElementById("deadlineDate").value + "T00:00:00")) : null;
+    // *** MODIFICAÇÃO IMPORTANTE AQUI ***
+    const dateInputValue = document.getElementById("date").value;
+    const selectedDate = new Date(dateInputValue + "T00:00:00"); // Força a data a ser interpretada como meia-noite no fuso horário local
+    const dateISO = formatDateToISO(selectedDate);
+
+    const deadlineDateInputValue = document.getElementById("deadlineDate").value;
+    let deadlineDateISO = null;
+    if (hasDeadline && deadlineDateInputValue) {
+        const selectedDeadlineDate = new Date(deadlineDateInputValue + "T00:00:00");
+        deadlineDateISO = formatDateToISO(selectedDeadlineDate);
+    }
+
     const newTarget = {
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
-        date: formatDateToISO(new Date(document.getElementById("date").value + "T00:00:00")),
+        date: dateISO,
         resolved: false,
         observations: [],
         hasDeadline: hasDeadline,
-        deadlineDate: deadlineDate
+        deadlineDate: deadlineDateISO
     };
     try {
         const user = auth.currentUser;
@@ -1060,7 +1081,10 @@ async function editDeadline(targetId) {
         const user = auth.currentUser;
         if (user) {
             const targetRef = doc(db, "users", user.uid, "prayerTargets", targetId);
-            await updateDoc(targetRef, { deadlineDate: convertToISO(newDeadline) });
+            // *** MODIFICAÇÃO IMPORTANTE AQUI ***
+            const selectedDeadlineDate = new Date(convertToISO(newDeadline) + "T00:00:00");
+            const deadlineDateISO = formatDateToISO(selectedDeadlineDate);
+            await updateDoc(targetRef, { deadlineDate: deadlineDateISO });
             await fetchPrayerTargets(user.uid); // Refresh targets from Firestore
             renderTargets();
             alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);

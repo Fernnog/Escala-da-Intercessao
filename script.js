@@ -1,8 +1,9 @@
-// Importações CORRETAS para uso com <script> (NDM) - Firebase 9.x.x
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.x.x/firebase-app-compat.js";
-import * as firestoreCompat from "https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore-compat.js";
+/* ==== INÍCIO - Configuração e Inicialização do Firebase (SDK Modular) ==== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.x.x/firebase-app.js"; // Usando 9.x.x ou 9.22.2
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.x.x/firebase-analytics.js"; // Usando 9.x.x ou 9.22.2
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore.js"; // Usando 9.x.x ou 9.22.2
 
-// Configuração do Firebase (SUAS CREDENCIAIS - **ATUALIZADAS PARA O NOVO PROJETO**)
+// Suas configurações do Firebase (ATUALIZADAS PARA O NOVO PROJETO)
 const firebaseConfig = {
     apiKey: "AIzaSyDUbWB7F_4-tQ8K799wylf36IayGWgBuMU",
     authDomain: "diario-de-oracao-268d3.firebaseapp.com",
@@ -13,10 +14,13 @@ const firebaseConfig = {
     measurementId: "G-15YHNK7H2B"
 };
 
-// Inicializa o Firebase
+// Inicialize o Firebase
 const app = initializeApp(firebaseConfig);
-const db = firestoreCompat.getFirestore(app);
+const analytics = getAnalytics(app); // Inicializa o Firebase Analytics
+const db = getFirestore(app); // Inicializa o Firestore (SDK Modular)
+/* ==== FIM - Configuração e Inicialização do Firebase ==== */
 
+// ==== INÍCIO - Funções Utilitárias ====
 // Função para exibir os textos na tabela
 function exibirTextosNaTabela(textos) {
     const tabela = document.getElementById('textosTable').getElementsByTagName('tbody')[0];
@@ -54,7 +58,9 @@ function sanitizeInput(input) {
     div.textContent = input; // Usa textContent para evitar injeção de HTML
     return div.innerHTML; // Obtém o HTML sanitizado
 }
+/* ==== FIM - Funções Utilitárias ==== */
 
+/* ==== INÍCIO - Lógica de Pesquisa e Filtro ==== */
 // Função para filtrar os textos (agora com debounce)
 const filtrarTextos = debounce(function() {
     const termoPesquisa = document.getElementById('searchInput').value.toLowerCase();
@@ -73,12 +79,13 @@ const filtrarTextos = debounce(function() {
     }
 }, 300); // Atraso de 300ms para o debounce
 
-
 // Listener para a caixa de pesquisa (usa a função filtrarTextos com debounce)
 document.getElementById('searchInput').addEventListener('keyup', filtrarTextos);
+/* ==== FIM - Lógica de Pesquisa e Filtro ==== */
 
+/* ==== INÍCIO - Listeners do Firestore e Eventos do Formulário ==== */
 // Listener para o Firestore (com async/await e tratamento de erros)
-firestoreCompat.onSnapshot(firestoreCompat.collection(db, "PerolaRara"), async (snapshot) => {
+onSnapshot(collection(db, "PerolaRara"), async (snapshot) => { // Sintaxe Modular: onSnapshot e collection
     const textos = [];
     snapshot.forEach(doc => {
         textos.push({
@@ -114,7 +121,7 @@ document.getElementById('textForm').addEventListener('submit', async (event) => 
     const sanitizedTexto = sanitizeInput(texto);   // Sanitiza o texto
 
     try {
-        const docRef = await firestoreCompat.addDoc(firestoreCompat.collection(db, "PerolaRara"), {
+        const docRef = await addDoc(collection(db, "PerolaRara"), { // Sintaxe Modular: addDoc e collection
             titulo: sanitizedTitulo, // Usa o título sanitizado
             texto: sanitizedTexto,   // Usa o texto sanitizado
             timestamp: new Date()
@@ -125,13 +132,4 @@ document.getElementById('textForm').addEventListener('submit', async (event) => 
         document.getElementById('mensagem').style.color = 'green';
         setTimeout(() => { document.getElementById('mensagem').textContent = ''; }, 5000);
 
-        document.getElementById('titulo').value = '';
-        document.getElementById('texto').value = '';
-
-    } catch (error) {
-        console.error("Erro ao adicionar documento: ", error);
-        document.getElementById('mensagem').textContent = 'Erro ao salvar o texto.';
-        document.getElementById('mensagem').style.color = 'red';
-        setTimeout(() => { document.getElementById('mensagem').textContent = ''; }, 5000);
-    }
-});
+        document.getElementById('titulo

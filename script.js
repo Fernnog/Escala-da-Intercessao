@@ -45,13 +45,12 @@ function formatDateToISO(date) {
 }
 
 function formatDateForDisplay(dateString) {
-    if (dateString instanceof Date) {
-        dateString = formatDateToISO(dateString);
-    }
     if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
-    const date = new Date(dateString);
+    // *** MODIFICAÇÃO CRUCIAL: Interpretar string ISO como UTC ***
+    const date = new Date(dateString + 'T00:00:00Z'); // 'Z' indica UTC
     if (isNaN(date.getTime())) return 'Data Inválida';
-    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    // Converter para fuso horário local para exibição
+    return new Intl.DateTimeFormat('pt-BR').format(date);
 }
 
 function timeElapsed(date) {
@@ -65,7 +64,7 @@ function timeElapsed(date) {
 function isDateExpired(dateString) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return new Date(dateString) < today;
+    return new Date(dateString + 'T00:00:00Z') < today; // Interpretar como UTC para comparação
 }
 
 function generateUniqueId() {
@@ -75,10 +74,10 @@ function generateUniqueId() {
 // ==== FUNÇÕES AUXILIARES ====
 function rehydrateTargets(targets) {
     return targets.map(target => {
-        if (target.date) target.date = new Date(target.date);
-        if (target.archivedDate) target.archivedDate = new Date(target.archivedDate);
-        if (target.deadlineDate) target.deadlineDate = new Date(target.deadlineDate);
-        if (target.observations) target.observations.forEach(obs => obs.date = new Date(obs.date));
+        if (target.date) target.date = new Date(target.date + 'T00:00:00Z'); // Interpretar como UTC
+        if (target.archivedDate) target.archivedDate = new Date(target.archivedDate + 'T00:00:00Z'); // Interpretar como UTC
+        if (target.deadlineDate) target.deadlineDate = new Date(target.deadlineDate + 'T00:00:00Z'); // Interpretar como UTC
+        if (target.observations) target.observations.forEach(obs => obs.date = new Date(obs.date + 'T00:00:00Z')); // Interpretar como UTC
         return target;
     });
 }
@@ -363,29 +362,23 @@ async function saveObservation(targetId) {
     const dateInput = form.querySelector('input[type="date"]');
     const observationText = textarea.value.trim();
     const observationDateValue = dateInput.value;
+    // *** MODIFICAÇÃO IMPORTANTE: Salvar valor do input diretamente como ISO string ***
+    const observationDateISO = observationDateValue ? observationDateValue : formatDateToISO(new Date());
 
     if (observationText !== "") {
-        let observationDateISO;
-        if (observationDateValue) {
-            // *** MODIFICAÇÃO IMPORTANTE AQUI ***
-            const selectedObservationDate = new Date(observationDateValue + "T00:00:00");
-            observationDateISO = formatDateToISO(selectedObservationDate);
-        } else {
-            observationDateISO = formatDateToISO(new Date()); // Usa a data atual se nenhum valor for selecionado
-        }
         const userId = auth.currentUser.uid;
         const targetRef = doc(db, "users", userId, "prayerTargets", targetId);
 
         try {
-            const targetDoc = await getDoc(targetRef); // Use getDoc here
+            const targetDoc = await getDoc(targetRef);
 
             if (targetDoc.exists()) {
                 const targetData = targetDoc.data();
                 let updatedObservations = targetData.observations || [];
-                updatedObservations.push({ date: observationDateISO, observation: observationText });
+                updatedObservations.push({ date: observationDateISO, observation: observationText }); // Salva ISO string
 
                 await updateDoc(targetRef, { observations: updatedObservations });
-                await fetchPrayerTargets(userId); // Refresh targets from Firestore
+                await fetchPrayerTargets(userId);
                 renderTargets();
                 textarea.value = "";
                 dateInput.value = "";
@@ -423,26 +416,19 @@ document.getElementById('hasDeadline').addEventListener('change', function() {
 document.getElementById("prayerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const hasDeadline = document.getElementById("hasDeadline").checked;
-    // *** MODIFICAÇÃO IMPORTANTE AQUI ***
-    const dateInputValue = document.getElementById("date").value;
-    const selectedDate = new Date(dateInputValue + "T00:00:00"); // Força a data a ser interpretada como meia-noite no fuso horário local
-    const dateISO = formatDateToISO(selectedDate);
+    // *** MODIFICAÇÃO IMPORTANTE: Salvar valor do input diretamente como ISO string ***
+    const dateISO = document.getElementById("date").value;
 
-    const deadlineDateInputValue = document.getElementById("deadlineDate").value;
-    let deadlineDateISO = null;
-    if (hasDeadline && deadlineDateInputValue) {
-        const selectedDeadlineDate = new Date(deadlineDateInputValue + "T00:00:00");
-        deadlineDateISO = formatDateToISO(selectedDeadlineDate);
-    }
+    const deadlineDateISO = document.getElementById("deadlineDate").value;
 
     const newTarget = {
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
-        date: dateISO,
+        date: dateISO, // Salva ISO string diretamente
         resolved: false,
         observations: [],
         hasDeadline: hasDeadline,
-        deadlineDate: deadlineDateISO
+        deadlineDate: deadlineDateISO // Salva ISO string diretamente
     };
     try {
         const user = auth.currentUser;
@@ -1081,11 +1067,9 @@ async function editDeadline(targetId) {
         const user = auth.currentUser;
         if (user) {
             const targetRef = doc(db, "users", user.uid, "prayerTargets", targetId);
-            // *** MODIFICAÇÃO IMPORTANTE AQUI ***
-            const selectedDeadlineDate = new Date(convertToISO(newDeadline) + "T00:00:00");
-            const deadlineDateISO = formatDateToISO(selectedDeadlineDate);
-            await updateDoc(targetRef, { deadlineDate: deadlineDateISO });
-            await fetchPrayerTargets(user.uid); // Refresh targets from Firestore
+            const deadlineDateISO = convertToISO(newDeadline); // Converter para ISO
+            await updateDoc(targetRef, { deadlineDate: deadlineDateISO }); // Salvar ISO string
+            await fetchPrayerTargets(user.uid);
             renderTargets();
             alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);
         } else {

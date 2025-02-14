@@ -45,7 +45,15 @@ function formatDateToISO(date) {
 }
 
 function formatDateForDisplay(dateString) {
-    if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
+    if (!dateString) return 'Data Inválida';
+
+    // Verificar se dateString é um objeto Date
+    if (dateString instanceof Date) {
+        dateString = formatDateToISO(dateString); // Converter Date para string ISO
+    }
+
+    if (typeof dateString !== 'string' || dateString.includes('NaN')) return 'Data Inválida';
+
     // *** MODIFICAÇÃO CRUCIAL: Interpretar string ISO como UTC ***
     const date = new Date(dateString + 'T00:00:00Z'); // 'Z' indica UTC
     if (isNaN(date.getTime())) return 'Data Inválida';

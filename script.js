@@ -176,18 +176,12 @@ function renderTargets() {
             <p><strong>Data:</strong> ${formattedDate}</p>
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> Pendente</p>
-            <button onclick="markAsResolved('${
-              target.id
-            }')" class="btn resolved">Marcar como Respondido</button>
-            <button onclick="archiveTarget('${
-              target.id
-            }')" class="btn archive">Arquivar</button>
-            <button onclick="toggleAddObservation('${
-              target.id
-            }')" class="btn add-observation">Adicionar Observação</button>
+            <button class="btn resolved">Marcar como Respondido</button>
+            <button class="btn archive">Arquivar</button>
+            <button class="btn add-observation">Adicionar Observação</button>
             ${
               target.hasDeadline
-                ? `<button onclick="editDeadline('${target.id}')" class="btn edit-deadline">Editar Prazo</button>`
+                ? `<button class="btn edit-deadline">Editar Prazo</button>`
                 : ""
             }
             <div class="add-observation-form" data-target-id="${
@@ -196,15 +190,30 @@ function renderTargets() {
                 <h4 class="target-title"></h4>
                 <textarea placeholder="Escreva aqui a nova observação"></textarea>
                 <input type="date" >
-                <button onclick="saveObservation('${
-                  target.id
-                }')" class="btn">Salvar Observação</button>
+                <button class="btn save-observation-btn">Salvar Observação</button>
             </div>
             <div class="observations-list">
                 ${renderObservations(target.observations)}
             </div>
         `;
     targetList.appendChild(targetDiv);
+
+    // Adicionando event listeners programaticamente
+    const resolvedButton = targetDiv.querySelector(".resolved");
+    const archiveButton = targetDiv.querySelector(".archive");
+    const addObservationButton = targetDiv.querySelector(".add-observation");
+    const editDeadlineButton = targetDiv.querySelector(".edit-deadline");
+    const saveObservationBtn = targetDiv.querySelector(".save-observation-btn");
+
+
+    resolvedButton.addEventListener('click', () => markAsResolved(target.id));
+    archiveButton.addEventListener('click', () => archiveTarget(target.id));
+    addObservationButton.addEventListener('click', () => toggleAddObservation(target.id));
+    if (editDeadlineButton) { // Verifica se o botão de editar prazo existe
+        editDeadlineButton.addEventListener('click', () => editDeadline(target.id));
+    }
+    saveObservationBtn.addEventListener('click', () => saveObservation(target.id));
+
   });
   renderPagination("mainPanel", currentPage, filteredTargets);
   reattachEventListeners(); // Garante que os event listeners sejam reanexados após renderizar

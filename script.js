@@ -1,135 +1,1345 @@
-/* ==== INÍCIO - Configuração e Inicialização do Firebase (SDK Modular) ==== */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.x.x/firebase-app.js"; // Usando 9.x.x ou 9.22.2
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.x.x/firebase-analytics.js"; // Usando 9.x.x ou 9.22.2
-import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.x.x/firebase-firestore.js"; // Usando 9.x.x ou 9.22.2
+// Firebase configuration
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-// Suas configurações do Firebase (ATUALIZADAS PARA O NOVO PROJETO)
 const firebaseConfig = {
-    apiKey: "AIzaSyDUbWB7F_4-tQ8K799wylf36IayGWgBuMU",
-    authDomain: "diario-de-oracao-268d3.firebaseapp.com",
-    projectId: "diario-de-oracao-268d3",
-    storageBucket: "diario-de-oracao-268d3.firebasestorage.app",
-    messagingSenderId: "561592831701",
-    appId: "1:561592831701:web:2a682317486837fd795c5c",
-    measurementId: "G-15YHNK7H2B"
+  apiKey: "AIzaSyDUbWB7F_4-tQ8K799wylf36IayGWgBuMU",
+  authDomain: "diario-de-oracao-268d3.firebaseapp.com",
+  projectId: "diario-de-oracao-268d3",
+  storageBucket: "diario-de-oracao-268d3.firebasestorage.app",
+  messagingSenderId: "561592831701",
+  appId: "1:561592831701:web:2a682317486837fd795c5c",
+  measurementId: "G-15YHNK7H2B"
 };
 
-// Inicialize o Firebase
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app); // Inicializa o Firebase Analytics
-const db = getFirestore(app); // Inicializa o Firestore (SDK Modular)
-/* ==== FIM - Configuração e Inicialização do Firebase ==== */
+const analytics = getAnalytics(app);
+const auth = getAuth(app); // Initialize Firebase Auth
 
-// ==== INÍCIO - Funções Utilitárias ====
-// Função para exibir os textos na tabela
-function exibirTextosNaTabela(textos) {
-    const tabela = document.getElementById('textosTable').getElementsByTagName('tbody')[0];
-    if (!tabela) {
-        console.error("Corpo da tabela (tbody) não encontrado!");
+// ==== INÍCIO SEÇÃO - VARIÁVEIS GLOBAIS ====
+let prayerTargets = [];
+let archivedTargets = [];
+let resolvedTargets = [];
+let localStorageKeyPrefix = 'myPrayers_';
+let lastDisplayedTargets = [];
+let currentPage = 1;
+let currentArchivedPage = 1;
+let currentResolvedPage = 1;
+const targetsPerPage = 10;
+let currentSearchTermMain = '';
+let currentSearchTermArchived = '';
+let currentSearchTermResolved = '';
+let showDeadlineOnly = false;
+// ==== FIM SEÇÃO - VARIÁVEIS GLOBAIS ====
+
+// ==== INÍCIO SEÇÃO - FUNÇÕES UTILITÁRIAS ====
+function formatDateToISO(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatDateForDisplay(dateString) {
+    if (dateString instanceof Date) {
+        dateString = formatDateToISO(dateString);
+    }
+
+    if (!dateString || dateString.includes('NaN')) return 'Data Inválida';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Data Inválida';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+function timeElapsed(date) {
+    const now = new Date();
+    const targetDate = new Date(date);
+    const elapsed = now - targetDate;
+
+    const days = Math.floor(elapsed / (1000 * 60 * 60 * 24));
+
+    if (days < 7) {
+        return `${days} dia(s)`;
+    }
+    const weeks = Math.floor(days / 7);
+    return `${weeks} semana(s)`;
+}
+
+function isDateExpired(dateString) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const date = new Date(dateString);
+    return date < today;
+}
+
+function generateUniqueId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+// ==== FIM SEÇÃO - FUNÇÕES UTILITÁRIAS ====
+
+// ==== INÍCIO SEÇÃO - FUNÇÕES AUXILIARES ====
+function rehydrateTargets(targets) {
+    return targets.map(target => {
+        target.date = new Date(target.date);
+        if (target.archivedDate) {
+            target.archivedDate = new Date(target.archivedDate);
+        }
+        if (target.deadlineDate) {
+            target.deadlineDate = new Date(target.deadlineDate);
+        }
+        if (target.observations) {
+            target.observations.forEach(obs => {
+                obs.date = new Date(obs.date);
+            });
+        }
+        return target;
+    });
+}
+
+function reattachEventListeners() {
+    const targetDivs = document.querySelectorAll("#targetList .target");
+    targetDivs.forEach(targetDiv => {
+        const targetId = targetDiv.querySelector(".add-observation-form").dataset.targetId;
+
+        const resolvedButton = targetDiv.querySelector(".resolved");
+        resolvedButton.onclick = () => markAsResolved(targetId);
+
+        const archiveButton = targetDiv.querySelector(".archive");
+        archiveButton.onclick = () => archiveTarget(targetId);
+
+        const addObservationButton = targetDiv.querySelector(".add-observation");
+        addObservationButton.onclick = () => toggleAddObservation(targetId);
+    });
+}
+// ==== FIM SEÇÃO - FUNÇÕES AUXILIARES ====
+
+// ==== INÍCIO SEÇÃO - INICIALIZAÇÃO E LOGIN ====
+function loadData(user) {
+    if (user) {
+        document.getElementById('appContent').style.display = 'block';
+        document.getElementById('dailySection').style.display = 'block';
+        document.getElementById('sectionSeparator').style.display = 'block';
+        document.getElementById('mainPanel').style.display = 'none';
+        document.getElementById('authSection').style.display = 'block';
+        document.getElementById('authStatus').textContent = "Usuário autenticado: " + user.email;
+        document.getElementById('btnLogout').style.display = 'inline-block';
+        document.getElementById('btnLogin').style.display = 'none';
+        document.getElementById('btnRegister').style.display = 'none';
+
+        prayerTargets = JSON.parse(localStorage.getItem(localStorageKeyPrefix + "prayerTargets")) || [];
+        archivedTargets = JSON.parse(localStorage.getItem(localStorageKeyPrefix + "archivedTargets")) || [];
+        resolvedTargets = archivedTargets.filter(target => target.resolved);
+
+        checkExpiredDeadlines();
+        renderTargets();
+        renderArchivedTargets();
+        renderResolvedTargets();
+        refreshDailyTargets();
+
+    } else {
+        document.getElementById('appContent').style.display = 'none';
+        document.getElementById('dailySection').style.display = 'none';
+        document.getElementById('sectionSeparator').style.display = 'none';
+        document.getElementById('mainPanel').style.display = 'none';
+        document.getElementById('authSection').style.display = 'block';
+        document.getElementById('authStatus').textContent = "Nenhum usuário autenticado";
+        document.getElementById('btnLogout').style.display = 'none';
+        document.getElementById('btnLogin').style.display = 'inline-block';
+        document.getElementById('btnRegister').style.display = 'inline-block';
+    }
+}
+
+window.onload = function () {
+    onAuthStateChanged(auth, (user) => {
+        loadData(user);
+    });
+    document.getElementById('searchMain').addEventListener('input', handleSearchMain);
+    document.getElementById('searchArchived').addEventListener('input', handleSearchArchived);
+    document.getElementById('searchResolved').addEventListener('input', handleSearchResolved);
+    document.getElementById('showDeadlineOnly').addEventListener('change', handleDeadlineFilterChange);
+    document.getElementById('showExpiredOnlyMain').addEventListener('change', handleExpiredOnlyMainChange);
+};
+// ==== FIM SEÇÃO - INICIALIZAÇÃO E LOGIN ====
+
+// ==== INÍCIO SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
+function renderTargets() {
+    const targetList = document.getElementById("targetList");
+    targetList.innerHTML = "";
+
+    let filteredTargets = prayerTargets;
+    if (showDeadlineOnly) {
+        filteredTargets = filteredTargets.filter(t => t.hasDeadline && !isDateExpired(t.deadlineDate));
+    }
+    const showExpiredOnlyMain = document.getElementById("showExpiredOnlyMain").checked;
+    if (showExpiredOnlyMain) {
+        filteredTargets = filteredTargets.filter(t => t.hasDeadline && isDateExpired(t.deadlineDate));
+    }
+
+    filteredTargets = filterTargets(filteredTargets, currentSearchTermMain);
+
+    const startIndex = (currentPage - 1) * targetsPerPage;
+    const endIndex = startIndex + targetsPerPage;
+    const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
+
+    targetsToDisplay.forEach((target) => {
+        const formattedDate = formatDateForDisplay(target.date);
+        const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
+        const targetDiv = document.createElement("div");
+        targetDiv.classList.add("target");
+        targetDiv.innerHTML = `
+            <h3>${deadlineTag} ${target.title}</h3>
+            <p>${target.details}</p>
+            <p><strong>Data:</strong> ${formattedDate}</p>
+            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+            <p><strong>Status:</strong> Pendente</p>
+            <button onclick="markAsResolved('${target.id}')" class="btn resolved">Marcar como Respondido</button>
+            <button onclick="archiveTarget('${target.id}')" class="btn archive">Arquivar</button>
+            <button onclick="toggleAddObservation('${target.id}')" class="btn add-observation">Adicionar Observação</button>
+            ${target.hasDeadline ? `<button onclick="editDeadline('${target.id}')" class="btn edit-deadline">Editar Prazo</button>` : ''}
+            <div class="add-observation-form" data-target-id="${target.id}" style="display: none;">
+                <h4 class="target-title"></h4>
+                <textarea placeholder="Escreva aqui a nova observação"></textarea>
+                <input type="date" >
+                <button onclick="saveObservation('${target.id}')" class="btn">Salvar Observação</button>
+            </div>
+            <div class="observations-list">
+                ${renderObservations(target.observations)}
+            </div>
+        `;
+        targetList.appendChild(targetDiv);
+    });
+    renderPagination('mainPanel', currentPage, filteredTargets);
+    reattachEventListeners();
+}
+
+function renderArchivedTargets() {
+    const archivedList = document.getElementById("archivedList");
+    archivedList.innerHTML = "";
+    const filteredTargets = filterTargets(archivedTargets, currentSearchTermArchived);
+    const startIndex = (currentArchivedPage - 1) * targetsPerPage;
+    const endIndex = startIndex + targetsPerPage;
+    const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
+
+    targetsToDisplay.forEach((target) => {
+        const formattedDate = formatDateForDisplay(target.date);
+        const formattedArchivedDate = formatDateForDisplay(target.archivedDate);
+        const archivedDiv = document.createElement("div");
+        archivedDiv.classList.add("target");
+        archivedDiv.innerHTML = `
+            <h3>${target.title}</h3>
+            <p>${target.details}</p>
+            <p><strong>Data Original:</strong> ${formattedDate}</p>
+            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+            <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
+            <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
+             <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete">Excluir</button>
+        `;
+        archivedList.appendChild(archivedDiv);
+    });
+    renderPagination('archivedPanel', currentArchivedPage, filteredTargets);
+}
+
+function renderResolvedTargets() {
+    const resolvedList = document.getElementById("resolvedList");
+    resolvedList.innerHTML = "";
+    const filteredTargets = filterTargets(resolvedTargets, currentSearchTermResolved);
+    const startIndex = (currentResolvedPage - 1) * targetsPerPage;
+    const endIndex = startIndex + targetsPerPage;
+    const targetsToDisplay = filteredTargets.slice(startIndex, endIndex);
+
+    targetsToDisplay.forEach((target) => {
+        const formattedDate = formatDateForDisplay(target.date);
+        const resolvedDate = formatDateForDisplay(target.archivedDate);
+        const resolvedDiv = document.createElement("div");
+        resolvedDiv.classList.add("target", "resolved");
+        resolvedDiv.innerHTML = `
+            <h3>${target.title}</h3>
+            <p>${target.details}</p>
+            <p><strong>Data Original:</strong> ${formattedDate}</p>
+            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+            <p><strong>Status:</strong> Respondido</p>
+            <p><strong>Data de Resolução:</strong> ${resolvedDate}</p>
+             <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete">Excluir</button>
+        `;
+        resolvedList.appendChild(resolvedDiv);
+    });
+    renderPagination('resolvedPanel', currentResolvedPage, filteredTargets);
+}
+
+function markAsResolvedDeadline(targetId) {
+    const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
+
+    if (targetIndex === -1) {
+        console.error("Alvo não encontrado.");
         return;
     }
-    tabela.innerHTML = ''; // Limpa a tabela
 
-    textos.forEach(texto => {
-        const linha = tabela.insertRow();
-        const colunaTitulo = linha.insertCell();
-        const colunaTexto = linha.insertCell();
-        const colunaData = linha.insertCell();
-
-        colunaTitulo.innerHTML = texto.titulo;
-        colunaTexto.innerHTML = texto.texto;
-        colunaData.innerHTML = new Date(texto.timestamp.seconds * 1000).toLocaleString();
-    });
+    const formattedDate = formatDateToISO(new Date());
+    prayerTargets[targetIndex].resolved = true;
+    prayerTargets[targetIndex].archivedDate = formattedDate;
+    archivedTargets.push(prayerTargets[targetIndex]);
+    resolvedTargets.push(prayerTargets[targetIndex]);
+    prayerTargets.splice(targetIndex, 1);
+    updateStorage();
+    currentPage = 1;
+    renderTargets();
+    refreshDailyTargets();
 }
 
-// Função debounce para otimizar a pesquisa
-function debounce(func, wait) {
-    let timeout;
-    return function (...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), wait);
-    };
-}
+function archiveTargetDeadline(targetId) {
+    const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
 
-// Função para sanitizar a entrada do usuário (segurança)
-function sanitizeInput(input) {
-    const div = document.createElement('div');
-    div.textContent = input; // Usa textContent para evitar injeção de HTML
-    return div.innerHTML; // Obtém o HTML sanitizado
-}
-/* ==== FIM - Funções Utilitárias ==== */
-
-/* ==== INÍCIO - Lógica de Pesquisa e Filtro ==== */
-// Função para filtrar os textos (agora com debounce)
-const filtrarTextos = debounce(function() {
-    const termoPesquisa = document.getElementById('searchInput').value.toLowerCase();
-    const linhas = document.getElementById('textosTable').getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-
-    for (let i = 0; i < linhas.length; i++) {
-        const colunaTitulo = linhas[i].getElementsByTagName('td')[0];
-        if (colunaTitulo) {
-            const textoTitulo = colunaTitulo.textContent || colunaTitulo.innerText;
-            if (textoTitulo.toLowerCase().indexOf(termoPesquisa) > -1) {
-                linhas[i].style.display = "";
-            } else {
-                linhas[i].style.display = "none";
-            }
-        }
+    if (targetIndex === -1) {
+        console.error("Alvo não encontrado.");
+        return;
     }
-}, 300); // Atraso de 300ms para o debounce
 
-// Listener para a caixa de pesquisa (usa a função filtrarTextos com debounce)
-document.getElementById('searchInput').addEventListener('keyup', filtrarTextos);
-/* ==== FIM - Lógica de Pesquisa e Filtro ==== */
+    const formattedDate = formatDateToISO(new Date());
+    prayerTargets[targetIndex].archivedDate = formattedDate;
+    archivedTargets.push(prayerTargets[targetIndex]);
+    prayerTargets.splice(targetIndex, 1);
+    updateStorage();
+    currentPage = 1;
+    renderTargets();
+    refreshDailyTargets();
+}
 
-/* ==== INÍCIO - Listeners do Firestore e Eventos do Formulário ==== */
-// Listener para o Firestore (com async/await e tratamento de erros)
-onSnapshot(collection(db, "PerolaRara"), async (snapshot) => { // Sintaxe Modular: onSnapshot e collection
-    const textos = [];
-    snapshot.forEach(doc => {
-        textos.push({
-            id: doc.id,
-            titulo: doc.data().titulo,
-            texto: doc.data().texto,
-            timestamp: doc.data().timestamp
+function toggleAddObservationDeadline(targetId) {
+    const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+
+    if (form.style.display === 'block') {
+        const target = prayerTargets.find(t => t.id === targetId);
+        form.querySelector('.target-title').textContent = `Adicionando observação para: ${target.title}`;
+    }
+}
+
+function saveObservationDeadline(targetId) {
+    const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
+    const textarea = form.querySelector('textarea');
+    const dateInput = form.querySelector('input[type="date"]');
+    const observationText = textarea.value.trim();
+    const observationDateValue = dateInput.value;
+
+    if (observationText !== "") {
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000));
+
+        const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
+
+        if (targetIndex === -1) {
+            console.error("Alvo não encontrado.");
+            return;
+        }
+
+        const newObservation = {
+            date: observationDate,
+            observation: observationText,
+        };
+
+        prayerTargets[targetIndex].observations.push(newObservation);
+        localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
+
+        renderTargets();
+
+        textarea.value = "";
+        dateInput.value = "";
+        form.style.display = "none";
+    } else {
+        alert("Por favor, insira o texto da observação.");
+    }
+}
+
+function renderPagination(panelId, page, targets) {
+    const totalPages = Math.ceil(targets.length / targetsPerPage);
+    let paginationDiv = document.getElementById("pagination-" + panelId);
+    if (!paginationDiv) {
+        paginationDiv = document.createElement("div");
+        paginationDiv.id = "pagination-" + panelId;
+        document.getElementById(panelId).appendChild(paginationDiv);
+    }
+    paginationDiv.innerHTML = "";
+
+    if (totalPages <= 1) {
+        paginationDiv.style.display = 'none';
+        return;
+    }
+    paginationDiv.style.display = 'flex';
+    paginationDiv.style.justifyContent = 'center';
+    paginationDiv.style.margin = '10px 0';
+
+    for (let i = 1; i <= totalPages; i++) {
+        const pageLink = document.createElement("a");
+        pageLink.href = "#";
+        pageLink.textContent = i;
+        pageLink.classList.add("page-link");
+        if (i === page) {
+            pageLink.classList.add('active');
+        }
+        pageLink.addEventListener("click", (event) => {
+            event.preventDefault();
+            if (panelId === 'mainPanel') {
+                currentPage = i;
+                renderTargets();
+            } else if (panelId === 'archivedPanel') {
+                currentArchivedPage = i;
+                renderArchivedTargets();
+            } else if (panelId === 'resolvedPanel') {
+                currentResolvedPage = i;
+                renderResolvedTargets();
+            }
         });
+        paginationDiv.appendChild(pageLink);
+    }
+}
+
+function renderObservations(observations) {
+    if (!observations || observations.length === 0) return '';
+
+    let observationsHTML = '<h4>Observações:</h4>';
+    observations.forEach(obs => {
+        observationsHTML += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
     });
-    exibirTextosNaTabela(textos);
-    filtrarTextos(); // Filtra após carregar/atualizar
-}, (error) => {
-    console.error("Erro ao ler dados do Firestore:", error);
-    document.getElementById('mensagem').textContent = 'Erro ao carregar os textos.';
-    document.getElementById('mensagem').style.color = 'red';
-    setTimeout(() => { document.getElementById('mensagem').textContent = ''; }, 5000);
+    return observationsHTML;
+}
+
+function toggleAddObservation(targetId) {
+    const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+
+    if (form.style.display === 'block') {
+        const target = prayerTargets.find(t => t.id === targetId);
+        form.querySelector('.target-title').textContent = `Adicionando observação para: ${target.title}`;
+    }
+}
+
+function saveObservation(targetId) {
+    const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
+    const textarea = form.querySelector('textarea');
+    const dateInput = form.querySelector('input[type="date"]');
+    const observationText = textarea.value.trim();
+    const observationDateValue = dateInput.value;
+
+    if (observationText !== "") {
+        let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000));
+
+        const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
+
+        if (targetIndex === -1) {
+            console.error("Alvo não encontrado.");
+            return;
+        }
+
+        const newObservation = {
+            date: observationDate,
+            observation: observationText,
+        };
+
+        prayerTargets[targetIndex].observations.push(newObservation);
+        localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
+
+        renderTargets();
+
+        textarea.value = "";
+        dateInput.value = "";
+        form.style.display = "none";
+    } else {
+        alert("Por favor, insira o texto da observação.");
+    }
+}
+
+function handleDeadlineFilterChange() {
+    showDeadlineOnly = document.getElementById("showDeadlineOnly").checked;
+    currentPage = 1;
+    renderTargets();
+}
+
+function handleExpiredOnlyMainChange() {
+    currentPage = 1;
+    renderTargets();
+}
+// ==== FIM SEÇÃO - FUNÇÕES DE RENDERIZAÇÃO ====
+
+// ==== INÍCIO SEÇÃO - MANIPULAÇÃO DE DADOS ====
+document.getElementById('hasDeadline').addEventListener('change', function() {
+    const deadlineContainer = document.getElementById('deadlineContainer');
+    deadlineContainer.style.display = this.checked ? 'block' : 'none';
 });
 
-// Evento de envio do formulário (com async/await, sanitização e tratamento de erros)
-document.getElementById('textForm').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const titulo = document.getElementById('titulo').value;
-    const texto = document.getElementById('texto').value;
+const form = document.getElementById("prayerForm");
+form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const hasDeadline = document.getElementById("hasDeadline").checked;
+    const deadlineDate = hasDeadline ? formatDateToISO(new Date(document.getElementById("deadlineDate").value + "T00:00:00")) : null;
+    const newTarget = {
+        id: generateUniqueId(),
+        title: document.getElementById("title").value,
+        details: document.getElementById("details").value,
+        date: formatDateToISO(new Date(document.getElementById("date").value + "T00:00:00")),
+        resolved: false,
+        observations: [],
+        hasDeadline: hasDeadline,
+        deadlineDate: deadlineDate
+    };
+    prayerTargets.push(newTarget);
+    localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
+    currentPage = 1;
+    renderTargets();
+    form.reset();
+    refreshDailyTargets();
+});
 
-    if (titulo.trim() === '' || texto.trim() === '') {
-        document.getElementById('mensagem').textContent = 'Por favor, preencha o título e o texto.';
-        document.getElementById('mensagem').style.color = 'red';
-        setTimeout(() => { document.getElementById('mensagem').textContent = ''; }, 5000);
+function markAsResolved(targetId) {
+    const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
+
+    if (targetIndex === -1) {
+        console.error("Alvo não encontrado.");
         return;
     }
 
-    const sanitizedTitulo = sanitizeInput(titulo); // Sanitiza o título
-    const sanitizedTexto = sanitizeInput(texto);   // Sanitiza o texto
+    const formattedDate = formatDateToISO(new Date());
+    prayerTargets[targetIndex].resolved = true;
+    prayerTargets[targetIndex].archivedDate = formattedDate;
+    archivedTargets.push(prayerTargets[targetIndex]);
+    resolvedTargets.push(prayerTargets[targetIndex]);
+    prayerTargets.splice(targetIndex, 1);
+    updateStorage();
+    currentPage = 1;
+    renderTargets();
+    refreshDailyTargets();
+}
 
-    try {
-        const docRef = await addDoc(collection(db, "PerolaRara"), { // Sintaxe Modular: addDoc e collection
-            titulo: sanitizedTitulo, // Usa o título sanitizado
-            texto: sanitizedTexto,   // Usa o texto sanitizado
-            timestamp: new Date()
+function archiveTarget(targetId) {
+    const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
+
+    if (targetIndex === -1) {
+        console.error("Alvo não encontrado.");
+        return;
+    }
+
+    const formattedDate = formatDateToISO(new Date());
+    prayerTargets[targetIndex].archivedDate = formattedDate;
+    archivedTargets.push(prayerTargets[targetIndex]);
+    prayerTargets.splice(targetIndex, 1);
+    updateStorage();
+    currentPage = 1;
+    renderTargets();
+    refreshDailyTargets();
+}
+
+function updateStorage() {
+    localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
+    localStorage.setItem(localStorageKeyPrefix + "archivedTargets", JSON.stringify(archivedTargets));
+    resolvedTargets = archivedTargets.filter(target => target.resolved);
+}
+// ==== FIM SEÇÃO - MANIPULAÇÃO DE DADOS ====
+
+// ==== INÍCIO SEÇÃO - EXCLUSÃO ====
+function deleteArchivedTarget(targetId) {
+    if (confirm("Tem certeza de que deseja excluir este alvo permanentemente? Esta ação não pode ser desfeita.")) {
+        const targetIndex = archivedTargets.findIndex(target => target.id === targetId);
+
+        if (targetIndex === -1) {
+            console.error("Alvo não encontrado.");
+            return;
+        }
+
+        archivedTargets.splice(targetIndex, 1);
+        updateStorage();
+
+        resolvedTargets = archivedTargets.filter(target => target.resolved);
+
+        renderArchivedTargets();
+        renderResolvedTargets();
+    }
+}
+// ==== FIM SEÇÃO - EXCLUSÃO ====
+
+// ==== INÍCIO SEÇÃO - EVENT LISTENERS ====
+document.addEventListener('DOMContentLoaded', () => {
+    const btnRegister = document.getElementById('btnRegister');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnLogout = document.getElementById('btnLogout');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const btnForgotPassword = document.getElementById('btnForgotPassword');
+    const passwordResetMessage = document.getElementById('passwordResetMessage');
+
+    if (btnRegister) {
+        btnRegister.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            if (!email || !password) {
+                alert("Preencha email e senha para registrar.");
+                return;
+            }
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                console.log("Usuário registrado:", userCredential.user);
+                loadData(userCredential.user);
+            } catch (error) {
+                console.error("Erro no registro:", error);
+                alert("Erro no registro: " + error.message);
+            }
         });
+    }
 
-        console.log("Documento escrito com ID: ", docRef.id);
-        document.getElementById('mensagem').textContent = 'Texto salvo com sucesso!';
-        document.getElementById('mensagem').style.color = 'green';
-        setTimeout(() => { document.getElementById('mensagem').textContent = ''; }, 5000);
+    if (btnLogin) {
+        btnLogin.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
 
-        document.getElementById('titulo
+            if (!email || !password) {
+                alert("Preencha email e senha para entrar.");
+                return;
+            }
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                console.log("Usuário logado:", userCredential.user);
+                loadData(userCredential.user);
+            } catch (error) {
+                console.error("Erro no login:", error);
+                alert("Erro no login: " + error.message);
+            }
+        });
+    }
+
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                console.log("Usuário desconectado.");
+                loadData(null);
+            } catch (error) {
+                console.error("Erro ao sair:", error);
+            }
+        });
+    }
+
+    if (btnForgotPassword) {
+        btnForgotPassword.addEventListener('click', async () => {
+            const email = emailInput.value;
+            if (!email) {
+                alert("Por favor, insira seu email para redefinir a senha.");
+                return;
+            }
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                passwordResetMessage.textContent = "Email de redefinição de senha enviado. Verifique sua caixa de entrada (e spam).";
+                passwordResetMessage.style.display = "block";
+                setTimeout(() => {
+                    passwordResetMessage.style.display = "none";
+                }, 5000);
+            } catch (error) {
+                console.error("Erro ao enviar email de redefinição:", error);
+                alert("Erro ao redefinir a senha. Verifique o console para detalhes.");
+                passwordResetMessage.textContent = "Erro ao enviar email de redefinição. Tente novamente.";
+                passwordResetMessage.style.display = "block";
+            }
+        });
+    }
+});
+
+document.getElementById('viewAllTargetsButton').addEventListener('click', () => {
+    mainPanel.style.display = "block";
+    dailySection.style.display = "none";
+    archivedPanel.style.display = "none";
+    resolvedPanel.style.display = "none";
+    viewArchivedButton.style.display = "inline-block";
+    viewResolvedButton.style.display = "inline-block";
+    backToMainButton.style.display = "inline-block";
+    showDeadlineOnly = false;
+    document.getElementById("showDeadlineOnly").checked = false;
+    renderTargets();
+});
+
+const viewArchivedButton = document.getElementById("viewArchivedButton");
+const viewResolvedButton = document.getElementById("viewResolvedButton");
+const backToMainButton = document.getElementById("backToMainButton");
+const mainPanel = document.getElementById("mainPanel");
+const dailySection = document.getElementById("dailySection");
+const archivedPanel = document.getElementById("archivedPanel");
+const resolvedPanel = document.getElementById("resolvedPanel");
+
+viewArchivedButton.addEventListener("click", () => {
+    mainPanel.style.display = "none";
+    dailySection.style.display = "none";
+    archivedPanel.style.display = "block";
+    resolvedPanel.style.display = "none";
+    viewArchivedButton.style.display = "none";
+    viewResolvedButton.style.display = "inline-block";
+    backToMainButton.style.display = "inline-block";
+    currentArchivedPage = 1;
+    renderArchivedTargets();
+});
+
+viewResolvedButton.addEventListener("click", () => {
+    mainPanel.style.display = "none";
+    dailySection.style.display = "none";
+    archivedPanel.style.display = "none";
+    resolvedPanel.style.display = "block";
+    viewArchivedButton.style.display = "inline-block";
+    viewResolvedButton.style.display = "none";
+    backToMainButton.style.display = "inline-block";
+    currentResolvedPage = 1;
+    renderResolvedTargets();
+});
+
+backToMainButton.addEventListener("click", () => {
+    mainPanel.style.display = "none";
+    dailySection.style.display = "block";
+    archivedPanel.style.display = "none";
+    resolvedPanel.style.display = "none";
+    viewArchivedButton.style.display = "inline-block";
+    viewResolvedButton.style.display = "inline-block";
+    backToMainButton.style.display = "none";
+    hideTargets();
+    currentPage = 1;
+});
+
+const copyDailyButton = document.getElementById("copyDaily");
+copyDailyButton.addEventListener("click", function () {
+    const dailyTargetsElement = document.getElementById("dailyTargets");
+    if (!dailyTargetsElement) {
+        alert("Não foi possível encontrar os alvos diários para copiar.");
+        return;
+    }
+
+    const dailyTargetsText = Array.from(dailyTargetsElement.children).map(div => {
+        const title = div.querySelector('h3')?.textContent || '';
+        const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
+        const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
+
+               const observations = Array.from(div.querySelectorAll('p'))
+            .slice(2)
+            .map(p => p.textContent)
+            .join('\n');
+
+        let result = `${title}\n${details}\n${timeElapsed}`;
+        if (observations) {
+            result += `\nObservações:\n${observations}`;
+        }
+        return result;
+    }).join('\n\n---\n\n');
+
+    navigator.clipboard.writeText(dailyTargetsText).then(() => {
+        alert('Alvos diários copiados para a área de transferência!');
+    }, (err) => {
+        console.error('Erro ao copiar texto: ', err);
+        alert('Não foi possível copiar os alvos diários, por favor tente novamente.');
+    });
+});
+
+document.getElementById('generateViewButton').addEventListener('click', generateViewHTML);
+document.getElementById('viewDaily').addEventListener('click', generateDailyViewHTML);
+document.getElementById("viewResolvedViewButton").addEventListener("click", () => {
+    dateRangeModal.style.display = "block";
+    startDateInput.value = '';
+    endDateInput.value = '';
+});
+
+const dateRangeModal = document.getElementById("dateRangeModal");
+const closeDateRangeModalButton = document.getElementById("closeDateRangeModal");
+const generateResolvedViewButton = document.getElementById("generateResolvedView");
+const cancelDateRangeButton = document.getElementById("cancelDateRange");
+const startDateInput = document.getElementById("startDate");
+const endDateInput = document.getElementById("endDate");
+
+closeDateRangeModalButton.addEventListener("click", () => {
+    dateRangeModal.style.display = "none";
+});
+
+generateResolvedViewButton.addEventListener("click", () => {
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
+    const today = new Date();
+    const formattedToday = formatDateToISO(today);
+    const adjustedEndDate = endDate || formattedToday;
+
+    generateResolvedViewHTML(startDate, adjustedEndDate);
+    dateRangeModal.style.display = "none";
+});
+
+cancelDateRangeButton.addEventListener("click", () => {
+    dateRangeModal.style.display = "none";
+});
+// ==== FIM SEÇÃO - EVENT LISTENERS ====
+
+// ==== INÍCIO SEÇÃO - GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
+function generateViewHTML() {
+    const verseElement = document.getElementById('dailyVerses');
+    const currentVerse = verseElement ? verseElement.textContent : 'Versículo não encontrado.';
+
+    let htmlContent = `<!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Alvos de Oração</title>
+        <style>
+            body {
+                font-family: 'Playfair Display', serif;
+                margin: 10px;
+                padding: 10px;
+                background-color: #f9f9f9;
+                color: #333;
+                font-size: 16px;
+            }
+            h1 {
+                text-align: center;
+                color: #333;
+                margin-bottom: 20px;
+                font-size: 2.5em;
+            }
+            h2 {
+                color: #555;
+                font-size: 1.75em;
+                margin-bottom: 10px;
+            }
+            div {
+                margin-bottom: 20px;
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                background-color: #fff;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            p {
+                margin: 5px 0;
+            }
+            hr {
+                margin-top: 30px;
+                margin-bottom: 30px;
+                border: 0;
+                border-top: 1px solid #ddd;
+            }
+            .verse-container {
+                font-style: italic;
+                text-align: center;
+                margin-bottom: 20px;
+                color: #555;
+            }
+            .deadline-tag {
+                background-color: #ffcc00;
+                color: #333;
+                padding: 5px 10px;
+                border-radius: 5px;
+                margin-left: 10px;
+                font-size: 0.8em;
+            }
+            .expired {
+                background-color: #ff6666;
+                color: #fff;
+            }
+            @media (max-width: 768px) {
+                body {
+                    font-size: 14px;
+                }
+                h1 {
+                    font-size: 2em;
+                }
+                h2 {
+                    font-size: 1.5em;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Alvos de Oração</h1>
+        <div class="verse-container">${currentVerse}</div>`;
+
+    if (prayerTargets.length === 0) {
+        htmlContent += '<p>Nenhum alvo de oração cadastrado.</p>';
+    } else {
+        prayerTargets.forEach(target => {
+            const formattedDate = formatDateForDisplay(target.date);
+            const time = timeElapsed(target.date);
+            const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
+            htmlContent += `
+            <div>
+                <h2>${deadlineTag} ${target.title}</h2>
+                <p>${target.details}</p>
+                <p><strong>Data de Cadastro:</strong> ${formattedDate}</p>
+                <p><strong>Tempo Decorrido:</strong> ${time}</p>
+        `;
+            if (target.observations && target.observations.length > 0) {
+                htmlContent += `<h3>Observações:</h3>`;
+                target.observations.forEach(obs => {
+                    htmlContent += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
+                });
+            }
+            htmlContent += '</div><hr>';
+        });
+    }
+
+    htmlContent += `</body></html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const filename = `Alvos de oração geral até o dia ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.html`;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function generateDailyViewHTML() {
+    const verseElement = document.getElementById('dailyVerses');
+    const currentVerse = verseElement ? verseElement.textContent : 'Versículo não encontrado.';
+
+    let htmlContent = `<!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Alvos de Oração do Dia</title>
+        <style>
+            body {
+                font-family: 'Playfair Display', serif;
+                margin: 10px;
+                padding: 10px;
+                background-color: #f9f9f9;
+                color: #333;
+                font-size: 16px;
+            }
+            h1 {
+                text-align: center;
+                color: #333;
+                margin-bottom: 20px;
+                font-size: 2.5em;
+            }
+            h2 {
+                color: #555;
+                font-size: 1.75em;
+                margin-bottom: 10px;
+                display: inline-block; /* Para alinhar com a tag de prazo */
+            }
+            div {
+                margin-bottom: 20px;
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                background-color: #fff;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            p {
+                margin: 5px 0;
+            }
+            hr {
+                margin-top: 30px;
+                margin-bottom: 30px;
+                border: 0;
+                border-top: 1px solid #ddd;
+            }
+            .verse-container {
+                font-style: italic;
+                text-align: center;
+                margin-bottom: 20px;
+                color: #555;
+            }
+            .deadline-tag {
+                background-color: #ffcc00;
+                color: #333;
+                padding: 5px 10px;
+                border-radius: 5px;
+                margin-right: 10px; /* Espaço à direita da tag */
+                font-size: 0.8em;
+            }
+            .title-container {
+                display: flex; /* Para alinhar título e tag na mesma linha */
+                align-items: center; /* Para alinhar verticalmente */
+                justify-content: flex-start; /* Alinha os itens à esquerda */
+            }
+            @media (max-width: 768px) {
+                body {
+                    font-size: 14px;
+                }
+                h1 {
+                    font-size: 2em;
+                }
+                h2 {
+                    font-size: 1.5em;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Alvos de Oração do Dia</h1>
+        <div class="verse-container">${currentVerse}</div>`;
+
+    const dailyTargetsElement = document.getElementById("dailyTargets");
+    if (!dailyTargetsElement || dailyTargetsElement.children.length === 0) {
+        htmlContent += '<p>Nenhum alvo de oração do dia disponível.</p>';
+    } else {
+        Array.from(dailyTargetsElement.children).forEach(div => {
+            const deadlineTag = div.querySelector('.deadline-tag')?.outerHTML || '';
+            const titleElement = div.querySelector('h3');
+            let title = titleElement ? titleElement.textContent.trim() : '';
+
+            const details = div.querySelector('p:nth-of-type(1)')?.textContent || '';
+            const timeElapsed = div.querySelector('p:nth-of-type(2)')?.textContent || '';
+            const observations = Array.from(div.querySelectorAll('h4 + p'))
+                .map(p => p.textContent)
+                .join('\n');
+
+            htmlContent += `
+            <div>
+                <div class="title-container">
+                    ${deadlineTag} <h2>${title}</h2>
+                </div>
+                <p>${details}</p>
+                <p>${timeElapsed}</p>
+        `;
+            if (observations) {
+                htmlContent += `<h4>Observações:</h4><p>${observations}</p>`;
+            }
+            htmlContent += `</div><hr>`;
+        });
+    }
+
+    htmlContent += `</body></html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const filename = `Alvos de oração do dia ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.html`;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function generateResolvedViewHTML(startDate, endDate) {
+    const startDateObj = startDate ? new Date(startDate) : null;
+    const endDateObj = endDate ? new Date(endDate) : null;
+
+    const filteredResolvedTargets = resolvedTargets.filter(target => {
+        if (!target.resolved || !target.archivedDate) return false;
+
+        const resolvedDateObj = new Date(target.archivedDate);
+
+        if (startDateObj && resolvedDateObj < startDateObj) return false;
+        if (endDateObj) {
+            endDateObj.setHours(23, 59, 59);
+            if (resolvedDateObj > endDateObj) return false;
+        }
+
+        return true;
+    });
+
+    let htmlContent = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alvos Respondidos</title>
+    <style>
+        body {
+            font-family: 'Playfair Display', serif;
+            margin: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            color: #333;
+            font-size: 16px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        h2 {
+            color: #555;
+            font-size: 1.75em;
+            margin-bottom: 10px;
+        }
+        div {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        p {
+            margin: 5px 0;
+        }
+        hr {
+            margin-top: 30px;
+            margin-bottom: 30px;
+            border: 0;
+            border-top: 1px solid #ddd;
+        }
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+<h1>Alvos Respondidos</h1>`;
+
+    if (filteredResolvedTargets.length === 0) {
+        htmlContent += '<p>Nenhum alvo respondido encontrado para o período selecionado.</p>';
+    } else {
+        filteredResolvedTargets.forEach(target => {
+            const formattedDate = formatDateForDisplay(target.date);
+            const formattedArchivedDate = formatDateForDisplay(target.archivedDate);
+            htmlContent += `
+            <div>
+                <h2>${target.title}</h2>
+                <p>${target.details}</p>
+                <p><strong>Data Original:</strong> ${formattedDate}</p>
+                <p><strong>Data de Resolução:</strong> ${formattedArchivedDate}</p>
+            </div><hr>
+        `;
+        });
+    }
+
+    htmlContent += `</body></html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const filename = `Alvos Respondidos - ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.html`;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+// ==== FIM SEÇÃO - GERAÇÃO DE VISUALIZAÇÃO (HTML) ====
+
+// ==== INÍCIO SEÇÃO - FUNÇÕES DE BUSCA ====
+function filterTargets(targets, searchTerm) {
+    if (!searchTerm) return targets;
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    return targets.filter(target =>
+        target.title.toLowerCase().includes(lowerCaseSearchTerm) ||
+        target.details.toLowerCase().includes(lowerCaseSearchTerm) ||
+        (target.observations && target.observations.some(obs => obs.observation.toLowerCase().includes(lowerCaseSearchTerm)))
+    );
+}
+
+function handleSearchMain(event) {
+    currentSearchTermMain = event.target.value;
+    currentPage = 1;
+    renderTargets();
+}
+
+function handleSearchArchived(event) {
+    currentSearchTermArchived = event.target.value;
+    currentArchivedPage = 1;
+    renderArchivedTargets();
+}
+
+function handleSearchResolved(event) {
+    currentSearchTermResolved = event.target.value;
+    currentResolvedPage = 1;
+    renderResolvedTargets();
+}
+// ==== FIM SEÇÃO - FUNÇÕES DE BUSCA ====
+
+// ==== INÍCIO SEÇÃO - VERSÍCULOS BÍBLICOS ====
+const verses = [
+    "Mateus 7:7-8: “Peçam, e será dado a vocês; busquem, e encontrarão; batam, e a porta será aberta a vocês. Pois todo o que pede recebe; o que busca encontra; e àquele que bate, a porta será aberta.”",
+    "Marcos 11:24: \"Portanto, eu digo a vocês, tudo o que pedirem em oração, creiam que já o receberam, e será de vocês.\"",
+    "João 14:13-14: “E eu farei o que vocês pedirem em meu nome, para que o Pai seja glorificado no Filho. O que vocês pedirem em meu nome, eu farei.”",
+    "Filipenses 4:6-7: “Não se preocupem com nada, mas em todas as situações, pela oração e petição, com ação de graças, apresentem seus pedidos a Deus. E a paz de Deus, que excede todo o entendimento, guardará os seus corações e as suas mentes em Cristo Jesus.”",
+    "1 Tessalonicenses 5:16-18: “Alegrem-se sempre, orem continuamente, deem graças em todas as circunstâncias; pois esta é a vontade de Deus para vocês em Cristo Jesus.”",
+    "Tiago 5:13-16: “Há alguém entre vocês que está em apuros? Que ele ore. Há alguém feliz? Que ele cante louvores. Há alguém entre vocês que está doente? Que ele chame os presbíteros da igreja para orar por ele e ungi-lo com óleo em nome do Senhor. E a oração oferecida com fé fará o doente ficar bom; o Senhor o levantará. Se ele pecou, ele será perdoado. Portanto, confessem seus pecados uns aos outros e orem uns pelos outros para que vocês possam ser curados. A oração de um justo é poderosa e eficaz.”",
+    "1 João 5:14-15: “Esta é a confiança que temos ao nos aproximarmos de Deus: que se pedirmos qualquer coisa de acordo com a sua vontade, ele nos ouve. E se sabemos que ele nos ouve — tudo o que pedimos — sabemos que temos o que lhe pedimos.”",
+    "Efésios 6:18: \"Orem no Espírito em todas as ocasiões com todo tipo de orações e pedidos. Com isso em mente, estejam alertas e sempre continuem a orar por todo o povo do Senhor.\"",
+    "1 Timóteo 2:1-2: \"Eu exorto, então, antes de tudo, que petições, orações, intercessões e ações de graças sejam feitas para todos os povos, para reis e todos aqueles em autoridade, para que possamos viver vidas pacíficas e tranquilas em toda a piedade e santidade.\"",
+    "2 Crônicas 7:14: “Se o meu povo, que se chama pelo meu nome, se humilhar, e orar, e buscar a minha face, e se desviar dos seus maus caminhos, então ouvirei dos céus, perdoarei os seus pecados, e sararei a sua terra.”",
+    "Salmos 34:17: “Os justos clamam, o Senhor os ouve, e os livra de todas as suas angústias.”",
+    "Jeremias 33:3: “Clama a mim, e responder-te-ei, e anunciar-te-ei coisas grandes e firmes que não sabes.”",
+    "Salmos 145:18-19: “Perto está o Senhor de todos os que o invocam, de todos os que o invocam em verdade. Ele cumprirá o desejo dos que o temem; ouvirá o seu clamor, e os salvará.”",
+    "Daniel 9:18: “Inclina, ó Deus meu, os ouvidos, e ouve; abre os olhos, e olha para a nossa desolação, e para a cidade que é chamada pelo teu nome; porque não lançamos as nossas súplicas perante a tua face confiados em nossas justiças, mas em tuas muitas misericórdias.”",
+    "Provérbios 15:29: “O Senhor está longe dos perversos, mas ouve a oração dos justos.”",
+    "1 Reis 18:37: “Responde-me, Senhor, responde-me, para que este povo saiba que tu, Senhor, és Deus, e que tu fizeste o coração deles voltar para ti.”",
+    "Isaías 65:24: “E será que antes que clamem, eu responderei; estando eles ainda falando, eu os ouvirei.”"
+];
+function displayRandomVerse() {
+    const randomIndex = Math.floor(Math.random() * verses.length);
+    const verseElement = document.getElementById('dailyVerses');
+    verseElement.textContent = verses[randomIndex];
+}
+// ==== FIM SEÇÃO - VERSÍCULOS BÍBLICOS ====
+
+// ==== INÍCIO SEÇÃO - FUNCIONALIDADE DO BOTÃO "OREI!" ====
+function addPrayButtonFunctionality(dailyDiv, targetIndex) {
+    const prayButton = document.createElement("button");
+    prayButton.textContent = "Orei!";
+    prayButton.classList.add("pray-button");
+    prayButton.onclick = () => {
+        dailyDiv.remove();
+        checkIfAllPrayersDone();
+    };
+    dailyDiv.insertBefore(prayButton, dailyDiv.firstChild);
+}
+
+function checkIfAllPrayersDone() {
+    const dailyTargets = document.getElementById("dailyTargets");
+    if (dailyTargets.children.length === 0) {
+        displayCompletionPopup();
+    }
+}
+
+function displayCompletionPopup() {
+    const popup = document.getElementById('completionPopup');
+    popup.style.display = 'block';
+}
+
+// Adicionando o event listener para fechar o popup
+document.getElementById('closePopup').addEventListener('click', () => {
+    document.getElementById('completionPopup').style.display = 'none';
+});
+// ==== FIM SEÇÃO - FUNCIONALIDADE DO BOTÃO "OREI!" ====
+
+// Atualizar os alvos diários
+function refreshDailyTargets() {
+    const dailyTargets = document.getElementById("dailyTargets");
+    dailyTargets.innerHTML = "";
+    const dailyTargetsCount = Math.min(prayerTargets.length, 10); // Mostrar até 10 alvos
+
+    // Filtrar alvos que não foram exibidos recentemente
+    let availableTargets = prayerTargets.filter(target => !lastDisplayedTargets.includes(target));
+
+   // Se todos os alvos foram exibidos, reseta o histórico
+    if (availableTargets.length === 0) {
+        lastDisplayedTargets = [];
+        availableTargets = prayerTargets.slice(); // Cria uma cópia da array para evitar modificação direta
+    }
+
+    // Seleciona aleatoriamente os alvos
+    const shuffledTargets = availableTargets.sort(() => 0.5 - Math.random());
+    const selectedTargets = shuffledTargets.slice(0, dailyTargetsCount);
+
+    // Atualizar o histórico de exibição
+    lastDisplayedTargets = [...lastDisplayedTargets, ...selectedTargets].slice(-prayerTargets.length);
+
+    selectedTargets.forEach((target, index) => {
+        const dailyDiv = document.createElement("div");
+        dailyDiv.classList.add("target");
+
+             // Construindo o HTML para incluir título, detalhes e tempo decorrido, sem a tag de prazo no título
+        const deadlineTag = target.hasDeadline ? `<span class="deadline-tag ${isDateExpired(target.deadlineDate) ? 'expired' : ''}">Prazo: ${formatDateForDisplay(target.deadlineDate)}</span>` : '';
+        let contentHTML = `
+            <h3>${deadlineTag} ${target.title}</h3>
+            <p>${target.details}</p> <!-- Inclui os detalhes (observações originais) -->
+            <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
+        `;
+
+        // Adicionando observações, se existirem
+        if (target.observations && target.observations.length > 0) {
+            contentHTML += `<h4>Observações:</h4>`;
+            target.observations.forEach(obs => {
+                contentHTML += `<p><strong>${formatDateForDisplay(obs.date)}:</strong> ${obs.observation}</p>`;
+            });
+        }
+
+        dailyDiv.innerHTML = contentHTML;
+        dailyTargets.appendChild(dailyDiv);
+
+        // Adicionar funcionalidade ao botão "Orei!"
+        addPrayButtonFunctionality(dailyDiv, index);
+    });
+
+    // Exibir versículo aleatório
+    displayRandomVerse();
+}
+// ==== FIM SEÇÃO - FUNÇÕES DE BUSCA ====
+
+// ==== INÍCIO SEÇÃO - EDITAR PRAZO DE VALIDADE ====
+function editDeadline(targetId) {
+    const target = prayerTargets.find(t => t.id === targetId);
+    if (!target) {
+        console.error("Alvo não encontrado.");
+        return;
+    }
+
+    // Obter a data atual do prazo (se houver)
+    const currentDeadline = target.deadlineDate ? formatDateForDisplay(target.deadlineDate) : '';
+
+    // Usar um prompt para obter a nova data de prazo de validade
+    const newDeadline = prompt("Insira a nova data de prazo de validade (DD/MM/YYYY):", currentDeadline);
+
+    // Se o usuário cancelar ou inserir uma data inválida, a função é encerrada
+    if (newDeadline === null) return;
+
+    // Validar a nova data
+    if (!isValidDate(newDeadline)) {
+        alert("Data inválida. Por favor, use o formato DD/MM/YYYY.");
+        return;
+    }
+
+    // Converter a nova data para o formato ISO (YYYY-MM-DD)
+    const newDeadlineISO = convertToISO(newDeadline);
+
+    // Atualizar o prazo de validade do alvo
+    target.deadlineDate = newDeadlineISO;
+
+    // Atualizar o localStorage
+    updateStorage();
+
+    // Renderizar novamente os alvos
+    renderTargets();
+
+    alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);
+    // exportData(); - REMOVIDA
+}
+
+function isValidDate(dateString) {
+    const parts = dateString.split('/');
+    if (parts.length !== 3) return false;
+
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
+
+    if (month < 1 || month > 12) return false;
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day < 1 || day > daysInMonth) return false;
+
+    return true;
+}
+
+function convertToISO(dateString) {
+    const parts = dateString.split('/');
+    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+}
+// ==== FIM SEÇÃO - EDITAR PRAZO DE VALIDADE ====
+function hideTargets(){
+   const targetList = document.getElementById("targetList");
+    targetList.innerHTML = "";
+}
+// Função para verificar e alertar sobre prazos de validade vencidos
+function checkExpiredDeadlines() {
+    const expiredTargets = prayerTargets.filter(target => target.hasDeadline && isDateExpired(target.deadlineDate));
+    if (expiredTargets.length > 0) {
+        let message = 'Os seguintes alvos estão com prazo de validade vencido:\n';
+        expiredTargets.forEach(target => {
+            message += `- ${target.title}\n`;
+        });
+        alert(message);
+    }
+}

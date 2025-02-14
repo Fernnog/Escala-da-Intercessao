@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDUbWB7F_4-tQ8K799wylf36IayGWgBuMU",
@@ -16,12 +17,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
+const db = getFirestore(app); // Initialize Firestore
 
 // ==== VARIÁVEIS GLOBAIS ====
 let prayerTargets = [];
 let archivedTargets = [];
 let resolvedTargets = [];
-let localStorageKeyPrefix = 'myPrayers_'; // Prefixo fixo, pois login foi removido
 let lastDisplayedTargets = [];
 let currentPage = 1;
 let currentArchivedPage = 1;
@@ -71,7 +72,7 @@ function generateUniqueId() {
 // ==== FUNÇÕES AUXILIARES ====
 function rehydrateTargets(targets) {
     return targets.map(target => {
-        target.date = new Date(target.date);
+        if (target.date) target.date = new Date(target.date);
         if (target.archivedDate) target.archivedDate = new Date(target.archivedDate);
         if (target.deadlineDate) target.deadlineDate = new Date(target.deadlineDate);
         if (target.observations) target.observations.forEach(obs => obs.date = new Date(obs.date));
@@ -79,17 +80,8 @@ function rehydrateTargets(targets) {
     });
 }
 
-function reattachEventListeners() {
-    document.querySelectorAll("#targetList .target").forEach(targetDiv => {
-        const targetId = targetDiv.querySelector(".add-observation-form").dataset.targetId;
-        targetDiv.querySelector(".resolved").onclick = () => markAsResolved(targetId);
-        targetDiv.querySelector(".archive").onclick = () => archiveTarget(targetId);
-        targetDiv.querySelector(".add-observation").onclick = () => toggleAddObservation(targetId);
-    });
-}
-
 // ==== INICIALIZAÇÃO E LOGIN/AUTENTICAÇÃO ====
-function loadData(user) {
+async function loadData(user) {
     if (user) {
         document.getElementById('appContent').style.display = 'block';
         document.getElementById('dailySection').style.display = 'block';
@@ -101,8 +93,8 @@ function loadData(user) {
         document.getElementById('btnLogin').style.display = 'none';
         document.getElementById('btnRegister').style.display = 'none';
 
-        prayerTargets = JSON.parse(localStorage.getItem(localStorageKeyPrefix + "prayerTargets")) || [];
-        archivedTargets = JSON.parse(localStorage.getItem(localStorageKeyPrefix + "archivedTargets")) || [];
+        await fetchPrayerTargets(user.uid);
+        await fetchArchivedTargets(user.uid);
         resolvedTargets = archivedTargets.filter(target => target.resolved);
 
         checkExpiredDeadlines();
@@ -121,9 +113,36 @@ function loadData(user) {
         document.getElementById('btnLogout').style.display = 'none';
         document.getElementById('btnLogin').style.display = 'inline-block';
         document.getElementById('btnRegister').style.display = 'inline-block';
-
+        prayerTargets = [];
+        archivedTargets = [];
+        resolvedTargets = [];
+        renderTargets();
+        renderArchivedTargets();
+        renderResolvedTargets();
+        refreshDailyTargets();
     }
 }
+
+async function fetchPrayerTargets(uid) {
+    prayerTargets = [];
+    const targetsRef = collection(db, "users", uid, "prayerTargets");
+    const targetsSnapshot = await getDocs(query(targetsRef, orderBy("date", "desc"))); // Ordenar por data
+    targetsSnapshot.forEach((doc) => {
+        prayerTargets.push({...doc.data(), id: doc.id});
+    });
+    prayerTargets = rehydrateTargets(prayerTargets);
+}
+
+async function fetchArchivedTargets(uid) {
+    archivedTargets = [];
+    const archivedRef = collection(db, "users", uid, "archivedTargets");
+    const archivedSnapshot = await getDocs(query(archivedRef, orderBy("archivedDate", "desc"))); // Ordenar por data de arquivo
+    archivedSnapshot.forEach((doc) => {
+        archivedTargets.push({...doc.data(), id: doc.id});
+    });
+     archivedTargets = rehydrateTargets(archivedTargets);
+}
+
 
 window.onload = () => {
     onAuthStateChanged(auth, (user) => {
@@ -205,18 +224,16 @@ function renderTargets() {
     const editDeadlineButton = targetDiv.querySelector(".edit-deadline");
     const saveObservationBtn = targetDiv.querySelector(".save-observation-btn");
 
-
     resolvedButton.addEventListener('click', () => markAsResolved(target.id));
     archiveButton.addEventListener('click', () => archiveTarget(target.id));
     addObservationButton.addEventListener('click', () => toggleAddObservation(target.id));
-    if (editDeadlineButton) { // Verifica se o botão de editar prazo existe
+    if (editDeadlineButton) {
         editDeadlineButton.addEventListener('click', () => editDeadline(target.id));
     }
     saveObservationBtn.addEventListener('click', () => saveObservation(target.id));
 
   });
   renderPagination("mainPanel", currentPage, filteredTargets);
-  reattachEventListeners(); // Garante que os event listeners sejam reanexados após renderizar
 }
 
 function renderArchivedTargets() {
@@ -239,9 +256,13 @@ function renderArchivedTargets() {
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> ${target.resolved ? "Respondido" : "Arquivado"}</p>
             <p><strong>Data de Arquivo:</strong> ${formattedArchivedDate}</p>
-             <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete">Excluir</button>
+             <button class="btn delete">Excluir</button>
         `;
         archivedList.appendChild(archivedDiv);
+
+        // Adicionando event listener para o botão "Excluir"
+        const deleteButton = archivedDiv.querySelector(".delete");
+        deleteButton.addEventListener('click', () => deleteArchivedTarget(target.id));
     });
     renderPagination('archivedPanel', currentArchivedPage, filteredTargets);
 }
@@ -266,9 +287,13 @@ function renderResolvedTargets() {
             <p><strong>Tempo Decorrido:</strong> ${timeElapsed(target.date)}</p>
             <p><strong>Status:</strong> Respondido</p>
             <p><strong>Data de Resolução:</strong> ${resolvedDate}</p>
-             <button onclick="deleteArchivedTarget('${target.id}')" class="btn delete">Excluir</button>
+             <button class="btn delete">Excluir</button>
         `;
         resolvedList.appendChild(resolvedDiv);
+
+        // Adicionando event listener para o botão "Excluir"
+        const deleteButton = resolvedDiv.querySelector(".delete");
+        deleteButton.addEventListener('click', () => deleteArchivedTarget(target.id));
     });
     renderPagination('resolvedPanel', currentResolvedPage, filteredTargets);
 }
@@ -329,7 +354,7 @@ function toggleAddObservation(targetId) {
     }
 }
 
-function saveObservation(targetId) {
+async function saveObservation(targetId) {
     const form = document.querySelector(`.add-observation-form[data-target-id="${targetId}"]`);
     const textarea = form.querySelector('textarea');
     const dateInput = form.querySelector('input[type="date"]');
@@ -338,19 +363,30 @@ function saveObservation(targetId) {
 
     if (observationText !== "") {
         let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000));
-        const targetIndex = prayerTargets.findIndex(t => t.id === targetId);
-        if (targetIndex === -1) { console.error("Alvo não encontrado."); return; }
+        const userId = auth.currentUser.uid;
+        const targetRef = doc(db, "users", userId, "prayerTargets", targetId);
+        const targetDoc = await getDocs(query(collection(db, "users", userId, "prayerTargets"), where("__name__", "==", targetRef.path)));
 
-        prayerTargets[targetIndex].observations.push({ date: observationDate, observation: observationText });
-        localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
-        renderTargets();
-        textarea.value = "";
-        dateInput.value = "";
-        form.style.display = "none";
+        if (!targetDoc.empty) {
+            const targetData = targetDoc.docs[0].data();
+            let updatedObservations = targetData.observations || [];
+            updatedObservations.push({ date: observationDate, observation: observationText });
+
+            await updateDoc(targetRef, { observations: updatedObservations });
+            await fetchPrayerTargets(userId); // Refresh targets from Firestore
+            renderTargets();
+            textarea.value = "";
+            dateInput.value = "";
+            form.style.display = "none";
+        } else {
+            console.error("Alvo não encontrado no Firestore para adicionar observação.");
+            alert("Erro ao salvar observação. Alvo não encontrado.");
+        }
     } else {
         alert("Por favor, insira o texto da observação.");
     }
 }
+
 
 function handleDeadlineFilterChange() {
     showDeadlineOnly = document.getElementById("showDeadlineOnly").checked;
@@ -368,12 +404,11 @@ document.getElementById('hasDeadline').addEventListener('change', function() {
     document.getElementById('deadlineContainer').style.display = this.checked ? 'block' : 'none';
 });
 
-document.getElementById("prayerForm").addEventListener("submit", (e) => {
+document.getElementById("prayerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const hasDeadline = document.getElementById("hasDeadline").checked;
     const deadlineDate = hasDeadline ? formatDateToISO(new Date(document.getElementById("deadlineDate").value + "T00:00:00")) : null;
     const newTarget = {
-        id: generateUniqueId(),
         title: document.getElementById("title").value,
         details: document.getElementById("details").value,
         date: formatDateToISO(new Date(document.getElementById("date").value + "T00:00:00")),
@@ -382,56 +417,114 @@ document.getElementById("prayerForm").addEventListener("submit", (e) => {
         hasDeadline: hasDeadline,
         deadlineDate: deadlineDate
     };
-    prayerTargets.push(newTarget);
-    localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
-    currentPage = 1;
-    renderTargets();
-    document.getElementById("prayerForm").reset();
-    refreshDailyTargets();
+    try {
+        const user = auth.currentUser;
+        if (user) {
+            const docRef = doc(collection(db, "users", user.uid, "prayerTargets")); // Firestore auto-generates ID
+            await setDoc(docRef, newTarget);
+            await fetchPrayerTargets(user.uid); // Refresh targets from Firestore
+            currentPage = 1;
+            renderTargets();
+            document.getElementById("prayerForm").reset();
+            refreshDailyTargets();
+        } else {
+            alert("Usuário não autenticado.");
+        }
+    } catch (error) {
+        console.error("Erro ao adicionar alvo no Firestore: ", error);
+        alert("Erro ao adicionar alvo. Verifique o console.");
+    }
 });
 
-function markAsResolved(targetId) {
-    const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
-    if (targetIndex === -1) { console.error("Alvo não encontrado."); return; }
-    prayerTargets[targetIndex].resolved = true;
-    prayerTargets[targetIndex].archivedDate = formatDateToISO(new Date());
-    archivedTargets.push(prayerTargets[targetIndex]);
-    resolvedTargets.push(prayerTargets[targetIndex]);//Adicionado pra manter consistencia
-    prayerTargets.splice(targetIndex, 1);
-    updateStorage();
-    currentPage = 1;
-    renderTargets();
-    refreshDailyTargets();
-}
 
-function archiveTarget(targetId) {
-    const targetIndex = prayerTargets.findIndex(target => target.id === targetId);
-    if (targetIndex === -1) { console.error("Alvo não encontrado."); return;}
-    prayerTargets[targetIndex].archivedDate = formatDateToISO(new Date());
-    archivedTargets.push(prayerTargets[targetIndex]);
-    prayerTargets.splice(targetIndex, 1);
-    updateStorage();
-    currentPage = 1;
-    renderTargets();
-    refreshDailyTargets();
-}
+async function markAsResolved(targetId) {
+    try {
+        const user = auth.currentUser;
+        if (user) {
+            const targetRef = doc(db, "users", user.uid, "prayerTargets", targetId);
+            const targetDoc = await getDoc(targetRef);
 
-function updateStorage() {
-    localStorage.setItem(localStorageKeyPrefix + "prayerTargets", JSON.stringify(prayerTargets));
-    localStorage.setItem(localStorageKeyPrefix + "archivedTargets", JSON.stringify(archivedTargets));
-    resolvedTargets = archivedTargets.filter(target => target.resolved);
-}
+             if (targetDoc.exists()) {
+                const resolvedTargetData = {...targetDoc.data(), resolved: true, archivedDate: formatDateToISO(new Date())};
+                const archivedRef = doc(collection(db, "users", user.uid, "archivedTargets"));
+                await setDoc(archivedRef, resolvedTargetData); // Save to archivedTargets
 
-// ==== EXCLUSÃO ====
-function deleteArchivedTarget(targetId) {
-    if (confirm("Tem certeza de que deseja excluir este alvo permanentemente? Esta ação não pode ser desfeita.")) {
-        archivedTargets.splice(archivedTargets.findIndex(target => target.id === targetId), 1);
-        updateStorage();
-        resolvedTargets = archivedTargets.filter(target => target.resolved); // Atualiza lista de resolvidos
-        renderArchivedTargets();
-        renderResolvedTargets();
+                await deleteDoc(targetRef); // Delete from prayerTargets
+                await fetchPrayerTargets(user.uid);
+                await fetchArchivedTargets(user.uid);
+                resolvedTargets = archivedTargets.filter(target => target.resolved);
+
+                renderTargets();
+                renderArchivedTargets();
+                renderResolvedTargets();
+                refreshDailyTargets();
+            } else {
+                console.error("Alvo não encontrado no Firestore para marcar como resolvido.");
+                alert("Alvo não encontrado.");
+            }
+        } else {
+            alert("Usuário não autenticado.");
+        }
+    } catch (error) {
+        console.error("Erro ao marcar como resolvido no Firestore: ", error);
+        alert("Erro ao marcar como resolvido. Verifique o console.");
     }
 }
+
+
+async function archiveTarget(targetId) {
+    try {
+        const user = auth.currentUser;
+        if (user) {
+            const targetRef = doc(db, "users", user.uid, "prayerTargets", targetId);
+            const targetDoc = await getDoc(targetRef);
+
+            if (targetDoc.exists()) {
+                 const archivedTargetData = {...targetDoc.data(), archivedDate: formatDateToISO(new Date())};
+                const archivedRef = doc(collection(db, "users", user.uid, "archivedTargets"));
+                await setDoc(archivedRef, archivedTargetData); // Save to archivedTargets
+
+                await deleteDoc(targetRef); // Delete from prayerTargets
+                await fetchPrayerTargets(user.uid);
+                await fetchArchivedTargets(user.uid);
+                renderTargets();
+                renderArchivedTargets();
+                refreshDailyTargets();
+            } else {
+                console.error("Alvo não encontrado no Firestore para arquivar.");
+                alert("Alvo não encontrado.");
+            }
+        } else {
+            alert("Usuário não autenticado.");
+        }
+    } catch (error) {
+        console.error("Erro ao arquivar no Firestore: ", error);
+        alert("Erro ao arquivar. Verifique o console.");
+    }
+}
+
+
+async function deleteArchivedTarget(targetId) {
+    if (confirm("Tem certeza de que deseja excluir este alvo permanentemente? Esta ação não pode ser desfeita.")) {
+        try {
+            const user = auth.currentUser;
+            if (user) {
+                const targetRef = doc(db, "users", user.uid, "archivedTargets", targetId);
+                await deleteDoc(targetRef);
+                await fetchArchivedTargets(user.uid);
+                resolvedTargets = archivedTargets.filter(target => target.resolved);
+                renderArchivedTargets();
+                renderResolvedTargets();
+            } else {
+                alert("Usuário não autenticado.");
+            }
+        } catch (error) {
+            console.error("Erro ao excluir alvo arquivado do Firestore: ", error);
+            alert("Erro ao excluir alvo arquivado. Verifique o console.");
+        }
+    }
+}
+
 
 // ==== EVENT LISTENERS ====
 // Autenticação
@@ -943,8 +1036,7 @@ function refreshDailyTargets() {
     displayRandomVerse();
 }
 
-// ==== EDITAR PRAZO DE VALIDADE ====
-function editDeadline(targetId) {
+async function editDeadline(targetId) {
     const target = prayerTargets.find(t => t.id === targetId);
     if (!target) { console.error("Alvo não encontrado."); return; }
 
@@ -958,11 +1050,23 @@ function editDeadline(targetId) {
         return;
     }
 
-    target.deadlineDate = convertToISO(newDeadline);
-    updateStorage();
-    renderTargets();
-    alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);
+    try {
+        const user = auth.currentUser;
+        if (user) {
+            const targetRef = doc(db, "users", user.uid, "prayerTargets", targetId);
+            await updateDoc(targetRef, { deadlineDate: convertToISO(newDeadline) });
+            await fetchPrayerTargets(user.uid); // Refresh targets from Firestore
+            renderTargets();
+            alert(`Prazo de validade do alvo "${target.title}" atualizado para ${newDeadline}.`);
+        } else {
+            alert("Usuário não autenticado.");
+        }
+    } catch (error) {
+        console.error("Erro ao editar prazo no Firestore: ", error);
+        alert("Erro ao editar prazo. Verifique o console.");
+    }
 }
+
 
 function isValidDate(dateString) {
     const parts = dateString.split('/');

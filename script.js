@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDUbWB7F_4-tQ8K799wylf36IayGWgBuMU",
@@ -365,22 +365,28 @@ async function saveObservation(targetId) {
         let observationDate = observationDateValue ? observationDateValue : formatDateToISO(new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000));
         const userId = auth.currentUser.uid;
         const targetRef = doc(db, "users", userId, "prayerTargets", targetId);
-        const targetDoc = await getDocs(query(collection(db, "users", userId, "prayerTargets"), where("__name__", "==", targetRef.path)));
 
-        if (!targetDoc.empty) {
-            const targetData = targetDoc.docs[0].data();
-            let updatedObservations = targetData.observations || [];
-            updatedObservations.push({ date: observationDate, observation: observationText });
+        try {
+            const targetDoc = await getDoc(targetRef); // Use getDoc here
 
-            await updateDoc(targetRef, { observations: updatedObservations });
-            await fetchPrayerTargets(userId); // Refresh targets from Firestore
-            renderTargets();
-            textarea.value = "";
-            dateInput.value = "";
-            form.style.display = "none";
-        } else {
-            console.error("Alvo não encontrado no Firestore para adicionar observação.");
-            alert("Erro ao salvar observação. Alvo não encontrado.");
+            if (targetDoc.exists()) {
+                const targetData = targetDoc.data();
+                let updatedObservations = targetData.observations || [];
+                updatedObservations.push({ date: observationDate, observation: observationText });
+
+                await updateDoc(targetRef, { observations: updatedObservations });
+                await fetchPrayerTargets(userId); // Refresh targets from Firestore
+                renderTargets();
+                textarea.value = "";
+                dateInput.value = "";
+                form.style.display = "none";
+            } else {
+                console.error("Alvo não encontrado no Firestore para adicionar observação.");
+                alert("Erro ao salvar observação. Alvo não encontrado.");
+            }
+        } catch (error) {
+             console.error("Erro ao adicionar observação no Firestore: ", error);
+             alert("Erro ao salvar observação. Verifique o console.");
         }
     } else {
         alert("Por favor, insira o texto da observação.");
@@ -442,7 +448,7 @@ async function markAsResolved(targetId) {
         const user = auth.currentUser;
         if (user) {
             const targetRef = doc(db, "users", user.uid, "prayerTargets", targetId);
-            const targetDoc = await getDoc(targetRef);
+            const targetDoc = await getDoc(targetRef); // Use getDoc here
 
              if (targetDoc.exists()) {
                 const resolvedTargetData = {...targetDoc.data(), resolved: true, archivedDate: formatDateToISO(new Date())};
@@ -477,7 +483,7 @@ async function archiveTarget(targetId) {
         const user = auth.currentUser;
         if (user) {
             const targetRef = doc(db, "users", user.uid, "prayerTargets", targetId);
-            const targetDoc = await getDoc(targetRef);
+            const targetDoc = await getDoc(targetRef); // Use getDoc here
 
             if (targetDoc.exists()) {
                  const archivedTargetData = {...targetDoc.data(), archivedDate: formatDateToISO(new Date())};

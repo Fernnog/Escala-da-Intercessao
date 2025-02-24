@@ -67,7 +67,26 @@ label {
     color: #34495e; /* Azul acinzentado para o texto */
 }
 
-input, select {
+/* Estilização específica para checkboxes na aba Geração da Escala */
+#formEscala label {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px; /* Espaçamento entre checkbox e texto */
+    margin: 5px 0; /* Espaçamento vertical entre os labels */
+}
+
+#formEscala input[type="checkbox"] {
+    accent-color: #4682b4; /* Cor azul para os checkboxes */
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+#formEscala input[type="checkbox"]:hover {
+    opacity: 0.8; /* Feedback visual ao passar o mouse */
+}
+
+input:not([type="checkbox"]), select {
     padding: 8px;
     border: 1px solid #87ceeb; /* Borda azul clara */
     border-radius: 4px;
@@ -76,7 +95,7 @@ input, select {
     transition: border-color 0.3s;
 }
 
-input:focus, select:focus {
+input:focus:not([type="checkbox"]), select:focus {
     border-color: #4682b4; /* Azul mais escuro ao focar */
     outline: none;
 }
@@ -194,6 +213,11 @@ button:hover {
 
     form {
         padding: 10px;
+    }
+
+    #formEscala label {
+        flex-direction: column;
+        align-items: flex-start;
     }
 
     ul li {

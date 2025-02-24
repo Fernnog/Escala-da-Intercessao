@@ -153,36 +153,57 @@ function excluirRestricaoPermanente(index) {
     salvarDados();
 }
 
-// Geração da Escala com mês e ano
+// Geração da Escala
 document.getElementById('formEscala').addEventListener('submit', (e) => {
     e.preventDefault();
+    
+    // Captura das opções do formulário
     const gerarCultos = document.getElementById('escalaCultos').checked;
     const gerarSabado = document.getElementById('escalaSabado').checked;
+    const gerarOração = document.getElementById('escalaOração').checked;
     const quantidadeCultos = parseInt(document.getElementById('quantidadeCultos').value);
     const mes = parseInt(document.getElementById('mesEscala').value);
     const ano = parseInt(document.getElementById('anoEscala').value);
     const resultado = document.getElementById('resultadoEscala');
 
+    // Define o período do mês
     const inicio = new Date(ano, mes, 1);
     const fim = new Date(ano, mes + 1, 0); // Último dia do mês
     resultado.innerHTML = `<h3>Escala Gerada - ${inicio.toLocaleString('pt-BR', { month: 'long' })} ${ano}</h3>`;
 
+    // Lista de dias com eventos
     const dias = [];
     for (let d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) {
         const diaSemana = d.toLocaleString('pt-BR', { weekday: 'long' });
-        if (gerarCultos && (diaSemana === 'quarta-feira' || diaSemana === 'domingo')) {
-            dias.push({ data: new Date(d), tipo: diaSemana === 'quarta-feira' ? 'Quarta' : 
-                (d.getHours() < 12 ? 'Domingo Manhã' : 'Domingo Noite') });
+
+        // Cultos: Quarta, Domingo Manhã e Domingo Noite
+        if (gerarCultos) {
+            if (diaSemana === 'quarta-feira') {
+                dias.push({ data: new Date(d), tipo: 'Quarta' });
+            }
+            if (diaSemana === 'domingo') {
+                dias.push({ data: new Date(d), tipo: 'Domingo Manhã' });  // Manhã
+                dias.push({ data: new Date(d), tipo: 'Domingo Noite' });  // Noite
+            }
         }
+
+        // Reuniões Online: Sábado
         if (gerarSabado && diaSemana === 'sábado') {
             dias.push({ data: new Date(d), tipo: 'Sábado' });
         }
+
+        // Oração no WhatsApp: Todos os dias
+        if (gerarOração) {
+            dias.push({ data: new Date(d), tipo: 'Oração no WhatsApp' });
+        }
     }
 
+    // Contador de participações
     const participacoes = {};
     membros.forEach(m => participacoes[m.nome] = 0);
     let escalaHTML = '<ul>';
 
+    // Geração da escala
     dias.forEach(dia => {
         const membrosDisponiveis = membros.filter(m => {
             const restricaoTemp = restricoes.some(r => r.membro === m.nome && dia.data >= r.inicio && dia.data <= r.fim);
@@ -190,10 +211,13 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
             return !restricaoTemp && !restricaoPerm;
         });
 
-        if (membrosDisponiveis.length < quantidadeCultos) return;
+        const qtdNecessaria = dia.tipo === 'Oração no WhatsApp' ? 1 : quantidadeCultos;
+        if (membrosDisponiveis.length < qtdNecessaria) return;
 
         let selecionados = [];
-        if (quantidadeCultos === 1 || dia.tipo === 'Sábado') {
+        if (dia.tipo === 'Oração no WhatsApp') {
+            selecionados = [membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome])[0]];
+        } else if (quantidadeCultos === 1 || dia.tipo === 'Sábado') {
             selecionados = [membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome])[0]];
         } else {
             const candidatos = membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome]);
@@ -209,7 +233,7 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
             }
         }
 
-        if (selecionados.length === (dia.tipo === 'Sábado' ? 1 : quantidadeCultos)) {
+        if (selecionados.length === qtdNecessaria) {
             selecionados.forEach(m => participacoes[m.nome]++);
             escalaHTML += `<li>${dia.data.toLocaleDateString()} - ${dia.tipo}: ${selecionados.map(m => m.nome).join(', ')}</li>`;
         }

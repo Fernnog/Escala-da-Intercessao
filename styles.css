@@ -1,99 +1,118 @@
+/* Estilo geral do corpo */
 body {
     font-family: Arial, sans-serif;
-    margin: 20px;
-    background-color: #f9f9f9;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 20px;
 }
 
+/* Estilo do cabeçalho */
 h1 {
+    text-align: center;
     color: #333;
-    text-align: center;
 }
 
-.tab {
-    display: none;
-}
-
-.tab.active {
-    display: block;
-}
-
+/* Navegação */
 nav {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
     margin-bottom: 20px;
-    text-align: center;
 }
 
 nav button {
+    background-color: #007bff;
+    color: white;
+    border: none;
     padding: 10px 20px;
-    margin-right: 10px;
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
+    margin: 5px;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 16px;
+    transition: background-color 0.3s;
 }
 
 nav button:hover {
-    background-color: #ddd;
+    background-color: #0056b3;
 }
 
-form {
-    margin-bottom: 20px;
+/* Abas */
+.tab {
+    background-color: white;
     padding: 20px;
-    background-color: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+/* Formulários */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
 label {
-    display: block;
-    margin: 10px 0;
+    display: flex;
+    flex-direction: column;
     font-weight: bold;
 }
 
-input, select, button {
+input, select {
     padding: 8px;
-    font-size: 14px;
     border: 1px solid #ccc;
     border-radius: 4px;
+    margin-top: 5px;
 }
 
-button {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    cursor: pointer;
-    padding: 10px 20px;
-}
-
-button:hover {
-    background-color: #45a049;
-}
-
+/* Listas */
 ul {
-    list-style-type: none;
+    list-style: none;
     padding: 0;
 }
 
 ul li {
-    padding: 8px;
-    background-color: #fff;
-    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f9f9f9;
+    padding: 10px;
+    margin-bottom: 10px;
     border-radius: 4px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-#resultadoEscala {
-    margin-top: 20px;
-    padding: 20px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+/* Botões de exclusão */
+button {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
 }
 
+button:hover {
+    background-color: #c82333;
+}
+
+/* Relatório de participações */
 #resultadoEscala h3, #resultadoEscala h4 {
+    margin-bottom: 10px;
     color: #333;
 }
 
 #resultadoEscala p {
     margin: 5px 0;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    nav {
+        flex-direction: column;
+    }
+
+    .tab {
+        padding: 10px;
+    }
 }

@@ -30,6 +30,21 @@ function carregarDados() {
     atualizarListaRestricoesPermanentes();
 }
 
+// Limpar todos os dados
+function limparDados() {
+    if (confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
+        membros = [];
+        restricoes = [];
+        restricoesPermanentes = [];
+        localStorage.clear();
+        atualizarListaMembros();
+        atualizarSelectMembros();
+        atualizarListaRestricoes();
+        atualizarListaRestricoesPermanentes();
+        document.getElementById('resultadoEscala').innerHTML = '';
+    }
+}
+
 // Cadastro de Membros com exclusão
 document.getElementById('formCadastro').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -138,18 +153,21 @@ function excluirRestricaoPermanente(index) {
     salvarDados();
 }
 
-// Geração da Escala com regras absolutas e relatório
+// Geração da Escala com mês e ano
 document.getElementById('formEscala').addEventListener('submit', (e) => {
     e.preventDefault();
     const gerarCultos = document.getElementById('escalaCultos').checked;
     const gerarSabado = document.getElementById('escalaSabado').checked;
     const quantidadeCultos = parseInt(document.getElementById('quantidadeCultos').value);
+    const mes = parseInt(document.getElementById('mesEscala').value);
+    const ano = parseInt(document.getElementById('anoEscala').value);
     const resultado = document.getElementById('resultadoEscala');
-    resultado.innerHTML = '<h3>Escala Gerada - Fevereiro 2025</h3>';
+
+    const inicio = new Date(ano, mes, 1);
+    const fim = new Date(ano, mes + 1, 0); // Último dia do mês
+    resultado.innerHTML = `<h3>Escala Gerada - ${inicio.toLocaleString('pt-BR', { month: 'long' })} ${ano}</h3>`;
 
     const dias = [];
-    const inicio = new Date('2025-02-01');
-    const fim = new Date('2025-02-28');
     for (let d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) {
         const diaSemana = d.toLocaleString('pt-BR', { weekday: 'long' });
         if (gerarCultos && (diaSemana === 'quarta-feira' || diaSemana === 'domingo')) {
@@ -175,7 +193,7 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
         if (membrosDisponiveis.length < quantidadeCultos) return;
 
         let selecionados = [];
-        if (quantidadeCultos === 1) {
+        if (quantidadeCultos === 1 || dia.tipo === 'Sábado') {
             selecionados = [membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome])[0]];
         } else {
             const candidatos = membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome]);
@@ -191,7 +209,7 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
             }
         }
 
-        if (selecionados.length === quantidadeCultos) {
+        if (selecionados.length === (dia.tipo === 'Sábado' ? 1 : quantidadeCultos)) {
             selecionados.forEach(m => participacoes[m.nome]++);
             escalaHTML += `<li>${dia.data.toLocaleDateString()} - ${dia.tipo}: ${selecionados.map(m => m.nome).join(', ')}</li>`;
         }
@@ -210,16 +228,16 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
 // Exportar Escala para XLSX
 function exportarEscalaXLSX() {
     const wb = XLSX.utils.book_new();
-    const dadosCultos = [['Data', 'Tipo', 'Pessoa 1', 'Pessoa 2']];
+    const dadosEscala = [['Data', 'Tipo', 'Pessoa 1', 'Pessoa 2']];
     document.querySelectorAll('#resultadoEscala ul li').forEach(li => {
         const [dataTipo, pessoas] = li.textContent.split(': ');
         const [data, tipo] = dataTipo.split(' - ');
         const nomes = pessoas.split(', ');
-        dadosCultos.push([data, tipo, nomes[0], nomes[1] || '']);
+        dadosEscala.push([data, tipo, nomes[0], nomes[1] || '']);
     });
-    const wsCultos = XLSX.utils.aoa_to_sheet(dadosCultos);
-    XLSX.utils.book_append_sheet(wb, wsCultos, 'Cultos');
-    XLSX.writeFile(wb, 'escala_fevereiro_2025.xlsx');
+    const wsEscala = XLSX.utils.aoa_to_sheet(dadosEscala);
+    XLSX.utils.book_append_sheet(wb, wsEscala, 'Escala');
+    XLSX.writeFile(wb, 'escala.xlsx');
 }
 
 // Exportar e importar dados em JSON

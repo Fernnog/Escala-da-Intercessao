@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Escala de Intercessores</title>
+    <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -16,6 +17,7 @@
         <button onclick="exportarDados()">Exportar Dados (JSON)</button>
         <input type="file" id="importarArquivo" accept=".json" onchange="importarDados(event)" style="display:none;">
         <button onclick="document.getElementById('importarArquivo').click()">Importar Dados (JSON)</button>
+        <button onclick="limparDados()">Limpar Dados</button>
     </nav>
 
     <!-- Aba Cadastro de Membros -->
@@ -86,6 +88,23 @@
                     <option value="2">2 pessoas</option>
                 </select>
             </label>
+            <label>Mês: 
+                <select id="mesEscala" required>
+                    <option value="0">Janeiro</option>
+                    <option value="1">Fevereiro</option>
+                    <option value="2">Março</option>
+                    <option value="3">Abril</option>
+                    <option value="4">Maio</option>
+                    <option value="5">Junho</option>
+                    <option value="6">Julho</option>
+                    <option value="7">Agosto</option>
+                    <option value="8">Setembro</option>
+                    <option value="9">Outubro</option>
+                    <option value="10">Novembro</option>
+                    <option value="11">Dezembro</option>
+                </select>
+            </label>
+            <label>Ano: <input type="number" id="anoEscala" min="2025" value="2025" required></label>
             <button type="submit">Gerar Escala</button>
         </form>
         <div id="resultadoEscala"></div>

@@ -1,19 +1,36 @@
 let membros = [];
 let restricoes = [];
+let restricoesPermanentes = [];
 
-// Mostrar/esconder abas
+// Função para alternar abas
 function showTab(tabId) {
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
+    document.querySelectorAll('.tab').forEach(tab => tab.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
 }
 
-// Exibir campo de cônjuge
+// Alternar campo de cônjuge
 function toggleConjuge() {
-    const conjugeField = document.getElementById('conjugeField');
-    conjugeField.style.display = document.getElementById('conjugeParticipa').checked ? 'block' : 'none';
+    document.getElementById('conjugeField').style.display = 
+        document.getElementById('conjugeParticipa').checked ? 'block' : 'none';
 }
 
-// Cadastro de Membros
+// Salvar e carregar dados no localStorage
+function salvarDados() {
+    localStorage.setItem('dadosEscala', JSON.stringify({ membros, restricoes, restricoesPermanentes }));
+}
+
+function carregarDados() {
+    const dados = JSON.parse(localStorage.getItem('dadosEscala') || '{}');
+    membros = dados.membros || [];
+    restricoes = dados.restricoes || [];
+    restricoesPermanentes = dados.restricoesPermanentes || [];
+    atualizarListaMembros();
+    atualizarSelectMembros();
+    atualizarListaRestricoes();
+    atualizarListaRestricoesPermanentes();
+}
+
+// Cadastro de Membros com exclusão
 document.getElementById('formCadastro').addEventListener('submit', (e) => {
     e.preventDefault();
     const nome = document.getElementById('nome').value;
@@ -29,21 +46,34 @@ document.getElementById('formCadastro').addEventListener('submit', (e) => {
     membros.push({ nome, genero, conjuge: nomeConjuge });
     atualizarListaMembros();
     atualizarSelectMembros();
+    salvarDados();
     e.target.reset();
     toggleConjuge();
 });
 
 function atualizarListaMembros() {
     const lista = document.getElementById('listaMembros');
-    lista.innerHTML = membros.map(m => `<li>${m.nome} (${m.genero}) ${m.conjuge ? '- Cônjuge: ' + m.conjuge : ''}</li>`).join('');
+    lista.innerHTML = membros.map((m, index) => 
+        `<li>${m.nome} (${m.genero}) ${m.conjuge ? '- Cônjuge: ' + m.conjuge : ''} 
+        <button onclick="excluirMembro(${index})">Excluir</button></li>`).join('');
+}
+
+function excluirMembro(index) {
+    membros.splice(index, 1);
+    atualizarListaMembros();
+    atualizarSelectMembros();
+    salvarDados();
 }
 
 function atualizarSelectMembros() {
-    const select = document.getElementById('membroRestricao');
-    select.innerHTML = '<option value="">Selecione</option>' + membros.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+    const selects = [document.getElementById('membroRestricao'), document.getElementById('membroRestricaoPermanente')];
+    selects.forEach(select => {
+        select.innerHTML = '<option value="">Selecione um membro</option>' + 
+            membros.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+    });
 }
 
-// Cadastro de Restrições
+// Cadastro de Restrições Temporárias com exclusão
 document.getElementById('formRestricao').addEventListener('submit', (e) => {
     e.preventDefault();
     const membro = document.getElementById('membroRestricao').value;
@@ -61,74 +91,175 @@ document.getElementById('formRestricao').addEventListener('submit', (e) => {
 
     restricoes.push({ membro, inicio, fim });
     atualizarListaRestricoes();
+    salvarDados();
     e.target.reset();
 });
 
 function atualizarListaRestricoes() {
     const lista = document.getElementById('listaRestricoes');
-    lista.innerHTML = restricoes.map(r => `<li>${r.membro}: ${r.inicio.toLocaleDateString()} a ${r.fim.toLocaleDateString()}</li>`).join('');
+    lista.innerHTML = restricoes.map((r, index) => 
+        `<li>${r.membro}: ${r.inicio.toLocaleDateString()} a ${r.fim.toLocaleDateString()} 
+        <button onclick="excluirRestricao(${index})">Excluir</button></li>`).join('');
 }
 
-// Geração da Escala
-document.getElementById('formEscala').addEventListener('submit', (e) => {
+function excluirRestricao(index) {
+    restricoes.splice(index, 1);
+    atualizarListaRestricoes();
+    salvarDados();
+}
+
+// Cadastro de Restrições Permanentes com exclusão
+document.getElementById('formRestricaoPermanente').addEventListener('submit', (e) => {
     e.preventDefault();
-    gerarEscala();
+    const membro = document.getElementById('membroRestricaoPermanente').value;
+    const diaSemana = document.getElementById('diaSemana').value;
+
+    if (!membro) {
+        alert('Selecione um membro!');
+        return;
+    }
+
+    restricoesPermanentes.push({ membro, diaSemana });
+    atualizarListaRestricoesPermanentes();
+    salvarDados();
+    e.target.reset();
 });
 
-function gerarEscala() {
+function atualizarListaRestricoesPermanentes() {
+    const lista = document.getElementById('listaRestricoesPermanentes');
+    lista.innerHTML = restricoesPermanentes.map((r, index) => 
+        `<li>${r.membro}: ${r.diaSemana} 
+        <button onclick="excluirRestricaoPermanente(${index})">Excluir</button></li>`).join('');
+}
+
+function excluirRestricaoPermanente(index) {
+    restricoesPermanentes.splice(index, 1);
+    atualizarListaRestricoesPermanentes();
+    salvarDados();
+}
+
+// Geração da Escala com regras absolutas e relatório
+document.getElementById('formEscala').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const gerarCultos = document.getElementById('escalaCultos').checked;
+    const gerarSabado = document.getElementById('escalaSabado').checked;
     const quantidadeCultos = parseInt(document.getElementById('quantidadeCultos').value);
     const resultado = document.getElementById('resultadoEscala');
     resultado.innerHTML = '<h3>Escala Gerada - Fevereiro 2025</h3>';
 
-    // Dias de culto (Quarta e Domingo) e Sábado
-    const diasCultos = [
-        { dia: 5, tipo: 'Quarta' }, { dia: 9, tipo: 'Domingo Manhã' }, { dia: 9, tipo: 'Domingo Noite' },
-        { dia: 12, tipo: 'Quarta' }, { dia: 16, tipo: 'Domingo Manhã' }, { dia: 16, tipo: 'Domingo Noite' },
-        { dia: 19, tipo: 'Quarta' }, { dia: 23, tipo: 'Domingo Manhã' }, { dia: 23, tipo: 'Domingo Noite' },
-        { dia: 26, tipo: 'Quarta' }
-    ];
-    const diasSabado = [1, 8, 15, 22];
-
-    // Escala para cultos (Quarta e Domingo)
-    let escalaCultos = '<h4>Cultos (Quarta e Domingo)</h4>';
-    diasCultos.forEach(({ dia, tipo }) => {
-        const dataAtual = new Date(2025, 1, dia);
-        const disponiveis = membros.filter(m => !restricoes.some(r => r.membro === m.nome && dataAtual >= r.inicio && dataAtual <= r.fim));
-
-        if (disponiveis.length === 0) {
-            escalaCultos += `<p>${tipo} ${dia}: Ninguém disponível</p>`;
-            return;
+    const dias = [];
+    const inicio = new Date('2025-02-01');
+    const fim = new Date('2025-02-28');
+    for (let d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) {
+        const diaSemana = d.toLocaleString('pt-BR', { weekday: 'long' });
+        if (gerarCultos && (diaSemana === 'quarta-feira' || diaSemana === 'domingo')) {
+            dias.push({ data: new Date(d), tipo: diaSemana === 'quarta-feira' ? 'Quarta' : 
+                (d.getHours() < 12 ? 'Domingo Manhã' : 'Domingo Noite') });
         }
+        if (gerarSabado && diaSemana === 'sábado') {
+            dias.push({ data: new Date(d), tipo: 'Sábado' });
+        }
+    }
 
+    const participacoes = {};
+    membros.forEach(m => participacoes[m.nome] = 0);
+    let escalaHTML = '<ul>';
+
+    dias.forEach(dia => {
+        const membrosDisponiveis = membros.filter(m => {
+            const restricaoTemp = restricoes.some(r => r.membro === m.nome && dia.data >= r.inicio && dia.data <= r.fim);
+            const restricaoPerm = restricoesPermanentes.some(r => r.membro === m.nome && r.diaSemana === dia.tipo);
+            return !restricaoTemp && !restricaoPerm;
+        });
+
+        if (membrosDisponiveis.length < quantidadeCultos) return;
+
+        let selecionados = [];
         if (quantidadeCultos === 1) {
-            const pessoa = disponiveis[Math.floor(Math.random() * disponiveis.length)];
-            escalaCultos += `<p>${tipo} ${dia}: ${pessoa.nome}</p>`;
+            selecionados = [membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome])[0]];
         } else {
-            const pessoa1 = disponiveis[Math.floor(Math.random() * disponiveis.length)];
-            let pessoa2;
-
-            if (pessoa1.conjuge && disponiveis.some(m => m.nome === pessoa1.conjuge)) {
-                pessoa2 = disponiveis.find(m => m.nome === pessoa1.conjuge);
-            } else {
-                const mesmaGenero = disponiveis.filter(m => m.genero === pessoa1.genero && m.nome !== pessoa1.nome);
-                pessoa2 = mesmaGenero.length > 0 ? mesmaGenero[Math.floor(Math.random() * mesmaGenero.length)] : null;
+            const candidatos = membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome]);
+            for (let i = 0; i < candidatos.length && selecionados.length < 2; i++) {
+                if (!selecionados.length) {
+                    selecionados.push(candidatos[i]);
+                } else {
+                    const primeiro = selecionados[0];
+                    if (primeiro.genero === candidatos[i].genero || primeiro.conjuge === candidatos[i].nome || candidatos[i].conjuge === primeiro.nome) {
+                        selecionados.push(candidatos[i]);
+                    }
+                }
             }
+        }
 
-            escalaCultos += `<p>${tipo} ${dia}: ${pessoa1.nome} ${pessoa2 ? 'e ' + pessoa2.nome : '(Ninguém disponível para o par)'}</p>`;
+        if (selecionados.length === quantidadeCultos) {
+            selecionados.forEach(m => participacoes[m.nome]++);
+            escalaHTML += `<li>${dia.data.toLocaleDateString()} - ${dia.tipo}: ${selecionados.map(m => m.nome).join(', ')}</li>`;
         }
     });
 
-    // Escala para sábado (fixa em 1 pessoa)
-    let escalaSabado = '<h4>Reuniões Online (Sábado)</h4>';
-    diasSabado.forEach(dia => {
-        const dataAtual = new Date(2025, 1, dia);
-        const disponiveis = membros.filter(m => !restricoes.some(r => r.membro === m.nome && dataAtual >= r.inicio && dataAtual <= r.fim));
-        const pessoa = disponiveis.length > 0 ? disponiveis[Math.floor(Math.random() * disponiveis.length)] : null;
-        escalaSabado += `<p>Sábado ${dia}: ${pessoa ? pessoa.nome : 'Ninguém disponível'}</p>`;
-    });
+    escalaHTML += '</ul>';
+    resultado.innerHTML += escalaHTML;
 
-    resultado.innerHTML += escalaCultos + escalaSabado;
+    let relatorio = '<h4>Relatório de Participações</h4>';
+    for (const [nome, count] of Object.entries(participacoes)) {
+        relatorio += `<p>${nome}: ${count} participações</p>`;
+    }
+    resultado.innerHTML += relatorio;
+});
+
+// Exportar Escala para XLSX
+function exportarEscalaXLSX() {
+    const wb = XLSX.utils.book_new();
+    const dadosCultos = [['Data', 'Tipo', 'Pessoa 1', 'Pessoa 2']];
+    document.querySelectorAll('#resultadoEscala ul li').forEach(li => {
+        const [dataTipo, pessoas] = li.textContent.split(': ');
+        const [data, tipo] = dataTipo.split(' - ');
+        const nomes = pessoas.split(', ');
+        dadosCultos.push([data, tipo, nomes[0], nomes[1] || '']);
+    });
+    const wsCultos = XLSX.utils.aoa_to_sheet(dadosCultos);
+    XLSX.utils.book_append_sheet(wb, wsCultos, 'Cultos');
+    XLSX.writeFile(wb, 'escala_fevereiro_2025.xlsx');
 }
 
-// Mostrar a primeira aba por padrão
-showTab('cadastro');
+// Exportar e importar dados em JSON
+function exportarDados() {
+    const dados = { membros, restricoes, restricoesPermanentes };
+    const json = JSON.stringify(dados, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dados_escala.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importarDados(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const dados = JSON.parse(e.target.result);
+            membros = dados.membros || [];
+            restricoes = dados.restricoes || [];
+            restricoesPermanentes = dados.restricoesPermanentes || [];
+            atualizarListaMembros();
+            atualizarSelectMembros();
+            atualizarListaRestricoes();
+            atualizarListaRestricoesPermanentes();
+            salvarDados();
+            alert('Dados importados com sucesso!');
+        } catch (error) {
+            alert('Erro ao importar dados: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+// Inicializar ao carregar a página
+document.addEventListener('DOMContentLoaded', () => {
+    carregarDados();
+    showTab('cadastro');
+});

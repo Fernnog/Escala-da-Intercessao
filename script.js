@@ -2,19 +2,18 @@ let membros = [];
 let restricoes = [];
 let restricoesPermanentes = [];
 
-// Função para alternar abas
+// --- Funções Utilitárias (sem alterações) ---
+
 function showTab(tabId) {
     document.querySelectorAll('.tab').forEach(tab => tab.style.display = 'none');
     document.getElementById(tabId).style.display = 'block';
 }
 
-// Alternar campo de cônjuge
 function toggleConjuge() {
-    document.getElementById('conjugeField').style.display = 
+    document.getElementById('conjugeField').style.display =
         document.getElementById('conjugeParticipa').checked ? 'block' : 'none';
 }
 
-// Salvar e carregar dados no localStorage
 function salvarDados() {
     localStorage.setItem('dadosEscala', JSON.stringify({ membros, restricoes, restricoesPermanentes }));
 }
@@ -30,7 +29,6 @@ function carregarDados() {
     atualizarListaRestricoesPermanentes();
 }
 
-// Limpar todos os dados
 function limparDados() {
     if (confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
         membros = [];
@@ -45,7 +43,59 @@ function limparDados() {
     }
 }
 
-// Cadastro de Membros com exclusão
+// --- Funções de Membros (sem alterações) ---
+function atualizarListaMembros() {
+    const lista = document.getElementById('listaMembros');
+    lista.innerHTML = membros.map((m, index) =>
+        `<li>${m.nome} (${m.genero}) ${m.conjuge ? '- Cônjuge: ' + m.conjuge : ''}
+        <button onclick="excluirMembro(${index})">Excluir</button></li>`).join('');
+}
+
+function excluirMembro(index) {
+    membros.splice(index, 1);
+    atualizarListaMembros();
+    atualizarSelectMembros();
+    salvarDados();
+}
+
+function atualizarSelectMembros() {
+    const selects = [document.getElementById('membroRestricao'), document.getElementById('membroRestricaoPermanente')];
+    selects.forEach(select => {
+        select.innerHTML = '<option value="">Selecione um membro</option>' +
+            membros.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+    });
+}
+
+// --- Funções de Restrições (sem alterações) ---
+function atualizarListaRestricoes() {
+    const lista = document.getElementById('listaRestricoes');
+    lista.innerHTML = restricoes.map((r, index) =>
+        `<li>${r.membro}: ${r.inicio.toLocaleDateString()} a ${r.fim.toLocaleDateString()}
+        <button onclick="excluirRestricao(${index})">Excluir</button></li>`).join('');
+}
+
+function excluirRestricao(index) {
+    restricoes.splice(index, 1);
+    atualizarListaRestricoes();
+    salvarDados();
+}
+
+function atualizarListaRestricoesPermanentes() {
+    const lista = document.getElementById('listaRestricoesPermanentes');
+    lista.innerHTML = restricoesPermanentes.map((r, index) =>
+        `<li>${r.membro}: ${r.diaSemana}
+        <button onclick="excluirRestricaoPermanente(${index})">Excluir</button></li>`).join('');
+}
+
+function excluirRestricaoPermanente(index) {
+    restricoesPermanentes.splice(index, 1);
+    atualizarListaRestricoesPermanentes();
+    salvarDados();
+}
+
+
+// --- Funções de Cadastro (sem alterações) ---
+
 document.getElementById('formCadastro').addEventListener('submit', (e) => {
     e.preventDefault();
     const nome = document.getElementById('nome').value;
@@ -66,29 +116,6 @@ document.getElementById('formCadastro').addEventListener('submit', (e) => {
     toggleConjuge();
 });
 
-function atualizarListaMembros() {
-    const lista = document.getElementById('listaMembros');
-    lista.innerHTML = membros.map((m, index) => 
-        `<li>${m.nome} (${m.genero}) ${m.conjuge ? '- Cônjuge: ' + m.conjuge : ''} 
-        <button onclick="excluirMembro(${index})">Excluir</button></li>`).join('');
-}
-
-function excluirMembro(index) {
-    membros.splice(index, 1);
-    atualizarListaMembros();
-    atualizarSelectMembros();
-    salvarDados();
-}
-
-function atualizarSelectMembros() {
-    const selects = [document.getElementById('membroRestricao'), document.getElementById('membroRestricaoPermanente')];
-    selects.forEach(select => {
-        select.innerHTML = '<option value="">Selecione um membro</option>' + 
-            membros.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
-    });
-}
-
-// Cadastro de Restrições Temporárias com exclusão
 document.getElementById('formRestricao').addEventListener('submit', (e) => {
     e.preventDefault();
     const membro = document.getElementById('membroRestricao').value;
@@ -110,20 +137,6 @@ document.getElementById('formRestricao').addEventListener('submit', (e) => {
     e.target.reset();
 });
 
-function atualizarListaRestricoes() {
-    const lista = document.getElementById('listaRestricoes');
-    lista.innerHTML = restricoes.map((r, index) => 
-        `<li>${r.membro}: ${r.inicio.toLocaleDateString()} a ${r.fim.toLocaleDateString()} 
-        <button onclick="excluirRestricao(${index})">Excluir</button></li>`).join('');
-}
-
-function excluirRestricao(index) {
-    restricoes.splice(index, 1);
-    atualizarListaRestricoes();
-    salvarDados();
-}
-
-// Cadastro de Restrições Permanentes com exclusão
 document.getElementById('formRestricaoPermanente').addEventListener('submit', (e) => {
     e.preventDefault();
     const membro = document.getElementById('membroRestricaoPermanente').value;
@@ -140,54 +153,99 @@ document.getElementById('formRestricaoPermanente').addEventListener('submit', (e
     e.target.reset();
 });
 
-function atualizarListaRestricoesPermanentes() {
-    const lista = document.getElementById('listaRestricoesPermanentes');
-    lista.innerHTML = restricoesPermanentes.map((r, index) => 
-        `<li>${r.membro}: ${r.diaSemana} 
-        <button onclick="excluirRestricaoPermanente(${index})">Excluir</button></li>`).join('');
-}
+// --- Funções de Geração da Escala (COM MELHORIAS) ---
 
-function excluirRestricaoPermanente(index) {
-    restricoesPermanentes.splice(index, 1);
-    atualizarListaRestricoesPermanentes();
-    salvarDados();
-}
 
-// Função de embaralhamento (Fisher-Yates)
-function embaralharArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+// Função auxiliar para seleção ponderada (OTIMIZADA)
+function weightedRandom(weights) {
+    let random = Math.random();
+    let cumulativeWeight = 0;
+    for (let i = 0; i < weights.length; i++) {
+        cumulativeWeight += weights[i];
+        if (random < cumulativeWeight) {
+            return i;
+        }
     }
-    return array;
+    return weights.length - 1; // Fallback (raramente necessário)
 }
 
-// Função para selecionar membros com aleatoriedade
+// Função de seleção aleatória ponderada
 function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessaria, participacoes) {
     if (membrosDisponiveis.length < quantidadeNecessaria) return [];
-    
-    // Ordenar por participações (menor para maior)
-    membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome]);
-    
-    // Determinar o valor mínimo de participações
-    const minParticipacoes = participacoes[membrosDisponiveis[0].nome];
-    
-    // Filtrar apenas membros com o número mínimo de participações
-    // ou até 2 participações a mais que o mínimo (para dar mais variedade)
-    const grupoPrioridade = membrosDisponiveis.filter(
-        m => participacoes[m.nome] <= minParticipacoes + 2
-    );
-    
-    // Embaralhar o grupo de prioridade
-    embaralharArray(grupoPrioridade);
-    
-    return grupoPrioridade;
+
+    // Calcular pesos inversamente proporcionais às participações
+    const pesos = membrosDisponiveis.map(m => 1 / (1 + participacoes[m.nome]));
+    const somaPesos = pesos.reduce((sum, p) => sum + p, 0);
+    const pesosNormalizados = pesos.map(p => p / somaPesos);
+
+    // Selecionar membros com base nos pesos
+    const selecionados = [];
+    const disponiveis = [...membrosDisponiveis]; // Cópia para não alterar o original
+    const pesosTemp = [...pesosNormalizados];
+
+    while (selecionados.length < quantidadeNecessaria && disponiveis.length > 0) {
+        const indice = weightedRandom(pesosTemp);
+        const membroSelecionado = disponiveis.splice(indice, 1)[0];
+        pesosTemp.splice(indice, 1);
+        selecionados.push(membroSelecionado);
+    }
+
+    return selecionados;
+}
+// Função de revisão da escala (COM LIMITE DINÂMICO)
+function revisarEscala(dias, participacoes) {
+
+    const mediaParticipacoes = Object.values(participacoes).reduce((sum, p) => sum + p, 0) / Object.values(participacoes).length;
+    const limiteDiferenca = Math.max(2, mediaParticipacoes * 0.2); // 20% da média, ou pelo menos 2
+
+    const maxParticipacoes = Math.max(...Object.values(participacoes));
+    const minParticipacoes = Math.min(...Object.values(participacoes));
+
+    if (maxParticipacoes - minParticipacoes > limiteDiferenca) {
+        const membrosOver = Object.entries(participacoes)
+            .filter(([_, count]) => count === maxParticipacoes)
+            .map(([nome]) => nome);
+        const membrosUnder = Object.entries(participacoes)
+            .filter(([_, count]) => count === minParticipacoes)
+            .map(([nome]) => nome);
+
+        dias.forEach(dia => {
+            dia.selecionados.forEach((membro, idx) => {
+                if (membrosOver.includes(membro.nome)) {
+                    const membrosDisponiveis = membros.filter(m => {
+                        const restricaoTemp = restricoes.some(r =>
+                            r.membro === m.nome && dia.data >= r.inicio && dia.data <= r.fim
+                        );
+                        const restricaoPerm = restricoesPermanentes.some(r =>
+                            r.membro === m.nome && r.diaSemana === dia.tipo
+                        );
+                        return !restricaoTemp && !restricaoPerm && m.nome !== membro.nome;
+                    });
+
+                    const substituto = membrosDisponiveis.find(m =>
+                        membrosUnder.includes(m.nome) &&
+                        (dia.selecionados.length === 1 ||
+                            (m.genero === dia.selecionados[1 - idx].genero ||
+                                m.conjuge === dia.selecionados[1 - idx].nome ||
+                                dia.selecionados[1 - idx].conjuge === m.nome))
+                    );
+
+                    if (substituto) {
+                        dia.selecionados[idx] = substituto;
+                        participacoes[membro.nome]--;
+                        participacoes[substituto.nome]++;
+                    }
+                }
+            });
+        });
+    }
 }
 
-// Geração da Escala com aleatoriedade
+
+// Evento de submissão do formulário
 document.getElementById('formEscala').addEventListener('submit', (e) => {
     e.preventDefault();
-    
+
     // Captura das opções do formulário
     const gerarCultos = document.getElementById('escalaCultos').checked;
     const gerarSabado = document.getElementById('escalaSabado').checked;
@@ -210,29 +268,28 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
         // Cultos: Quarta, Domingo Manhã e Domingo Noite
         if (gerarCultos) {
             if (diaSemana === 'quarta-feira') {
-                dias.push({ data: new Date(d), tipo: 'Quarta' });
+                dias.push({ data: new Date(d), tipo: 'Quarta', selecionados: [] });
             }
             if (diaSemana === 'domingo') {
-                dias.push({ data: new Date(d), tipo: 'Domingo Manhã' });  // Manhã
-                dias.push({ data: new Date(d), tipo: 'Domingo Noite' });  // Noite
+                dias.push({ data: new Date(d), tipo: 'Domingo Manhã', selecionados: [] });
+                dias.push({ data: new Date(d), tipo: 'Domingo Noite', selecionados: [] });
             }
         }
 
         // Reuniões Online: Sábado
         if (gerarSabado && diaSemana === 'sábado') {
-            dias.push({ data: new Date(d), tipo: 'Sábado' });
+            dias.push({ data: new Date(d), tipo: 'Sábado', selecionados: [] });
         }
 
         // Oração no WhatsApp: Todos os dias
         if (gerarOração) {
-            dias.push({ data: new Date(d), tipo: 'Oração no WhatsApp' });
+            dias.push({ data: new Date(d), tipo: 'Oração no WhatsApp', selecionados: [] });
         }
     }
 
     // Contador de participações
     const participacoes = {};
     membros.forEach(m => participacoes[m.nome] = 0);
-    let escalaHTML = '<ul>';
 
     // Geração da escala
     dias.forEach(dia => {
@@ -242,60 +299,54 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
             return !restricaoTemp && !restricaoPerm;
         });
 
-        const qtdNecessaria = dia.tipo === 'Oração no WhatsApp' ? 1 : quantidadeCultos;
+        const qtdNecessaria = dia.tipo === 'Oração no WhatsApp' ? 1 : (dia.tipo === 'Sábado' ? 1 : quantidadeCultos);
         if (membrosDisponiveis.length < qtdNecessaria) return;
 
         let selecionados = [];
-        
-        // Oração no WhatsApp (1 pessoa)
-        if (dia.tipo === 'Oração no WhatsApp') {
-            const candidatosAleatorios = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, participacoes);
-            if (candidatosAleatorios.length > 0) {
-                selecionados = [candidatosAleatorios[0]];
+
+        if (qtdNecessaria === 1) {
+            const candidatos = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, participacoes);
+            if (candidatos.length > 0) {
+                selecionados = candidatos;
             }
-        } 
-        // Sábado ou cultos com apenas 1 pessoa
-        else if (quantidadeCultos === 1 || dia.tipo === 'Sábado') {
-            const candidatosAleatorios = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, participacoes);
-            if (candidatosAleatorios.length > 0) {
-                selecionados = [candidatosAleatorios[0]];
-            }
-        } 
-        // Cultos com 2 pessoas
-        else {
-            // Para 2 pessoas, selecionar primeiro membro aleatoriamente entre os com menos participações
-            const candidatosAleatorios = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, participacoes);
-            
-            if (candidatosAleatorios.length > 0) {
-                const primeiro = candidatosAleatorios[0];
-                selecionados.push(primeiro);
-                
-                // Filtrar membros compatíveis para formar par com o primeiro
-                const membrosCompatíveis = membrosDisponiveis.filter(m => 
-                    m.nome !== primeiro.nome && (
-                        m.genero === primeiro.genero || // Mesmo gênero
-                        m.conjuge === primeiro.nome || // É cônjuge
-                        primeiro.conjuge === m.nome     // É cônjuge
-                    )
-                );
-                
-                if (membrosCompatíveis.length > 0) {
-                    // Ordenar e selecionar aleatoriamente entre os compatíveis com menos participações
-                    const segundosCandidatos = selecionarMembrosComAleatoriedade(membrosCompatíveis, 1, participacoes);
-                    selecionados.push(segundosCandidatos[0]);
-                }
+        } else {
+            const primeiro = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, participacoes)[0];
+            if (!primeiro) return;
+
+            const membrosCompatíveis = membrosDisponiveis.filter(m =>
+                m.nome !== primeiro.nome && (
+                    m.genero === primeiro.genero ||
+                    m.conjuge === primeiro.nome ||
+                    primeiro.conjuge === m.nome
+                )
+            );
+
+            const segundo = selecionarMembrosComAleatoriedade(membrosCompatíveis, 1, participacoes)[0];
+            if (segundo) {
+                selecionados = [primeiro, segundo];
             }
         }
 
         if (selecionados.length === qtdNecessaria) {
+            dia.selecionados = selecionados;
             selecionados.forEach(m => participacoes[m.nome]++);
-            escalaHTML += `<li>${dia.data.toLocaleDateString()} - ${dia.tipo}: ${selecionados.map(m => m.nome).join(', ')}</li>`;
         }
     });
 
+    // Revisar a escala
+    revisarEscala(dias, participacoes);
+
+    // Montar o HTML da escala
+    let escalaHTML = '<ul>';
+    dias.forEach(dia => {
+        if (dia.selecionados.length > 0) {
+            escalaHTML += `<li>${dia.data.toLocaleDateString()} - ${dia.tipo}: ${dia.selecionados.map(m => m.nome).join(', ')}</li>`;
+        }
+    });
     escalaHTML += '</ul>';
     resultado.innerHTML += escalaHTML;
 
+    // Relatório de participações
     let relatorio = '<h4>Relatório de Participações</h4>';
     for (const [nome, count] of Object.entries(participacoes)) {
         relatorio += `<p>${nome}: ${count} participações</p>`;
@@ -303,7 +354,10 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
     resultado.innerHTML += relatorio;
 });
 
-// Exportar Escala para XLSX
+
+// --- Funções de Exportar/Importar/Inicializar (sem alterações substanciais) ---
+
+
 function exportarEscalaXLSX() {
     const wb = XLSX.utils.book_new();
     const dadosEscala = [['Data', 'Tipo', 'Pessoa 1', 'Pessoa 2']];
@@ -318,7 +372,6 @@ function exportarEscalaXLSX() {
     XLSX.writeFile(wb, 'escala.xlsx');
 }
 
-// Exportar e importar dados em JSON
 function exportarDados() {
     const dados = { membros, restricoes, restricoesPermanentes };
     const json = JSON.stringify(dados, null, 2);
@@ -354,7 +407,6 @@ function importarDados(event) {
     reader.readAsText(file);
 }
 
-// Inicializar ao carregar a página
 document.addEventListener('DOMContentLoaded', () => {
     carregarDados();
     showTab('cadastro');

@@ -153,7 +153,38 @@ function excluirRestricaoPermanente(index) {
     salvarDados();
 }
 
-// Geração da Escala
+// Função de embaralhamento (Fisher-Yates)
+function embaralharArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+// Função para selecionar membros com aleatoriedade
+function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessaria, participacoes) {
+    if (membrosDisponiveis.length < quantidadeNecessaria) return [];
+    
+    // Ordenar por participações (menor para maior)
+    membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome]);
+    
+    // Determinar o valor mínimo de participações
+    const minParticipacoes = participacoes[membrosDisponiveis[0].nome];
+    
+    // Filtrar apenas membros com o número mínimo de participações
+    // ou até 2 participações a mais que o mínimo (para dar mais variedade)
+    const grupoPrioridade = membrosDisponiveis.filter(
+        m => participacoes[m.nome] <= minParticipacoes + 2
+    );
+    
+    // Embaralhar o grupo de prioridade
+    embaralharArray(grupoPrioridade);
+    
+    return grupoPrioridade;
+}
+
+// Geração da Escala com aleatoriedade
 document.getElementById('formEscala').addEventListener('submit', (e) => {
     e.preventDefault();
     
@@ -215,20 +246,43 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
         if (membrosDisponiveis.length < qtdNecessaria) return;
 
         let selecionados = [];
+        
+        // Oração no WhatsApp (1 pessoa)
         if (dia.tipo === 'Oração no WhatsApp') {
-            selecionados = [membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome])[0]];
-        } else if (quantidadeCultos === 1 || dia.tipo === 'Sábado') {
-            selecionados = [membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome])[0]];
-        } else {
-            const candidatos = membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome]);
-            for (let i = 0; i < candidatos.length && selecionados.length < 2; i++) {
-                if (!selecionados.length) {
-                    selecionados.push(candidatos[i]);
-                } else {
-                    const primeiro = selecionados[0];
-                    if (primeiro.genero === candidatos[i].genero || primeiro.conjuge === candidatos[i].nome || candidatos[i].conjuge === primeiro.nome) {
-                        selecionados.push(candidatos[i]);
-                    }
+            const candidatosAleatorios = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, participacoes);
+            if (candidatosAleatorios.length > 0) {
+                selecionados = [candidatosAleatorios[0]];
+            }
+        } 
+        // Sábado ou cultos com apenas 1 pessoa
+        else if (quantidadeCultos === 1 || dia.tipo === 'Sábado') {
+            const candidatosAleatorios = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, participacoes);
+            if (candidatosAleatorios.length > 0) {
+                selecionados = [candidatosAleatorios[0]];
+            }
+        } 
+        // Cultos com 2 pessoas
+        else {
+            // Para 2 pessoas, selecionar primeiro membro aleatoriamente entre os com menos participações
+            const candidatosAleatorios = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, participacoes);
+            
+            if (candidatosAleatorios.length > 0) {
+                const primeiro = candidatosAleatorios[0];
+                selecionados.push(primeiro);
+                
+                // Filtrar membros compatíveis para formar par com o primeiro
+                const membrosCompatíveis = membrosDisponiveis.filter(m => 
+                    m.nome !== primeiro.nome && (
+                        m.genero === primeiro.genero || // Mesmo gênero
+                        m.conjuge === primeiro.nome || // É cônjuge
+                        primeiro.conjuge === m.nome     // É cônjuge
+                    )
+                );
+                
+                if (membrosCompatíveis.length > 0) {
+                    // Ordenar e selecionar aleatoriamente entre os compatíveis com menos participações
+                    const segundosCandidatos = selecionarMembrosComAleatoriedade(membrosCompatíveis, 1, participacoes);
+                    selecionados.push(segundosCandidatos[0]);
                 }
             }
         }

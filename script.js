@@ -2,6 +2,15 @@ let membros = [];
 let restricoes = [];
 let restricoesPermanentes = [];
 
+// Função para embaralhar um array (Fisher-Yates shuffle)
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
 // Função para alternar abas
 function showTab(tabId) {
     document.querySelectorAll('.tab').forEach(tab => tab.style.display = 'none');
@@ -153,7 +162,7 @@ function excluirRestricaoPermanente(index) {
     salvarDados();
 }
 
-// Geração da Escala
+// Geração da Escala com aleatoriedade
 document.getElementById('formEscala').addEventListener('submit', (e) => {
     e.preventDefault();
     
@@ -203,7 +212,7 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
     membros.forEach(m => participacoes[m.nome] = 0);
     let escalaHTML = '<ul>';
 
-    // Geração da escala
+    // Geração da escala com aleatoriedade
     dias.forEach(dia => {
         const membrosDisponiveis = membros.filter(m => {
             const restricaoTemp = restricoes.some(r => r.membro === m.nome && dia.data >= r.inicio && dia.data <= r.fim);
@@ -216,18 +225,23 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
 
         let selecionados = [];
         if (dia.tipo === 'Oração no WhatsApp') {
-            selecionados = [membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome])[0]];
+            const membrosShuffled = shuffle([...membrosDisponiveis]);
+            selecionados = [membrosShuffled[0]];
         } else if (quantidadeCultos === 1 || dia.tipo === 'Sábado') {
-            selecionados = [membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome])[0]];
+            const membrosShuffled = shuffle([...membrosDisponiveis]);
+            selecionados = [membrosShuffled[0]];
         } else {
-            const candidatos = membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome]);
-            for (let i = 0; i < candidatos.length && selecionados.length < 2; i++) {
-                if (!selecionados.length) {
-                    selecionados.push(candidatos[i]);
+            const membrosShuffled = shuffle([...membrosDisponiveis]);
+            for (let i = 0; i < membrosShuffled.length && selecionados.length < 2; i++) {
+                const candidato = membrosShuffled[i];
+                if (selecionados.length === 0) {
+                    selecionados.push(candidato);
                 } else {
                     const primeiro = selecionados[0];
-                    if (primeiro.genero === candidatos[i].genero || primeiro.conjuge === candidatos[i].nome || candidatos[i].conjuge === primeiro.nome) {
-                        selecionados.push(candidatos[i]);
+                    if (primeiro.genero !== candidato.genero && 
+                        primeiro.conjuge !== candidato.nome && 
+                        candidato.conjuge !== primeiro.nome) {
+                        selecionados.push(candidato);
                     }
                 }
             }

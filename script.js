@@ -1,6 +1,16 @@
+// Declaração de variáveis globais
 let membros = [];
 let restricoes = [];
 let restricoesPermanentes = [];
+
+// Função para embaralhar um array (Fisher-Yates shuffle)
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
 
 // Função para alternar abas
 function showTab(tabId) {
@@ -153,7 +163,7 @@ function excluirRestricaoPermanente(index) {
     salvarDados();
 }
 
-// Geração da Escala
+// Geração da Escala com aleatoriedade controlada
 document.getElementById('formEscala').addEventListener('submit', (e) => {
     e.preventDefault();
     
@@ -168,7 +178,7 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
 
     // Define o período do mês
     const inicio = new Date(ano, mes, 1);
-    const fim = new Date(ano, mes + 1, 0); // Último dia do mês
+    const fim = new Date(ano, mes + 1, 0);
     resultado.innerHTML = `<h3>Escala Gerada - ${inicio.toLocaleString('pt-BR', { month: 'long' })} ${ano}</h3>`;
 
     // Lista de dias com eventos
@@ -176,61 +186,67 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
     for (let d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) {
         const diaSemana = d.toLocaleString('pt-BR', { weekday: 'long' });
 
-        // Cultos: Quarta, Domingo Manhã e Domingo Noite
         if (gerarCultos) {
-            if (diaSemana === 'quarta-feira') {
-                dias.push({ data: new Date(d), tipo: 'Quarta' });
-            }
+            if (diaSemana === 'quarta-feira') dias.push({ data: new Date(d), tipo: 'Quarta' });
             if (diaSemana === 'domingo') {
-                dias.push({ data: new Date(d), tipo: 'Domingo Manhã' });  // Manhã
-                dias.push({ data: new Date(d), tipo: 'Domingo Noite' });  // Noite
+                dias.push({ data: new Date(d), tipo: 'Domingo Manhã' });
+                dias.push({ data: new Date(d), tipo: 'Domingo Noite' });
             }
         }
-
-        // Reuniões Online: Sábado
-        if (gerarSabado && diaSemana === 'sábado') {
-            dias.push({ data: new Date(d), tipo: 'Sábado' });
-        }
-
-        // Oração no WhatsApp: Todos os dias
-        if (gerarOração) {
-            dias.push({ data: new Date(d), tipo: 'Oração no WhatsApp' });
-        }
+        if (gerarSabado && diaSemana === 'sábado') dias.push({ data: new Date(d), tipo: 'Sábado' });
+        if (gerarOração) dias.push({ data: new Date(d), tipo: 'Oração no WhatsApp' });
     }
 
     // Contador de participações
     const participacoes = {};
-    membros.forEach(m => participacoes[m.nome] = 0);
+    membros.forEach(m => (participacoes[m.nome] = 0));
     let escalaHTML = '<ul>';
 
     // Geração da escala
     dias.forEach(dia => {
         const membrosDisponiveis = membros.filter(m => {
-            const restricaoTemp = restricoes.some(r => r.membro === m.nome && dia.data >= r.inicio && dia.data <= r.fim);
-            const restricaoPerm = restricoesPermanentes.some(r => r.membro === m.nome && r.diaSemana === dia.tipo);
+            const restricaoTemp = restricoes.some(
+                r => r.membro === m.nome && dia.data >= r.inicio && dia.data <= r.fim
+            );
+            const restricaoPerm = restricoesPermanentes.some(
+                r => r.membro === m.nome && r.diaSemana === dia.tipo
+            );
             return !restricaoTemp && !restricaoPerm;
         });
 
         const qtdNecessaria = dia.tipo === 'Oração no WhatsApp' ? 1 : quantidadeCultos;
         if (membrosDisponiveis.length < qtdNecessaria) return;
 
+        membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome]);
+
         let selecionados = [];
-        if (dia.tipo === 'Oração no WhatsApp') {
-            selecionados = [membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome])[0]];
-        } else if (quantidadeCultos === 1 || dia.tipo === 'Sábado') {
-            selecionados = [membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome])[0]];
-        } else {
-            const candidatos = membrosDisponiveis.sort((a, b) => participacoes[a.nome] - participacoes[b.nome]);
-            for (let i = 0; i < candidatos.length && selecionados.length < 2; i++) {
-                if (!selecionados.length) {
-                    selecionados.push(candidatos[i]);
-                } else {
-                    const primeiro = selecionados[0];
-                    if (primeiro.genero === candidatos[i].genero || primeiro.conjuge === candidatos[i].nome || candidatos[i].conjuge === primeiro.nome) {
-                        selecionados.push(candidatos[i]);
-                    }
-                }
+        if (qtdNecessaria === 1) {
+            const minParticipacoes = participacoes[membrosDisponiveis[0].nome];
+            const candidatos = membrosDisponiveis.filter(m => participacoes[m.nome] === minParticipacoes);
+            shuffle(candidatos);
+            selecionados = [candidatos[0]];
+        } else if (qtdNecessaria === 2) {
+            const homens = membrosDisponiveis.filter(m => m.genero === 'M');
+            const mulheres = membrosDisponiveis.filter(m => m.genero === 'F');
+
+            let pool;
+            if (homens.length >= 2 && mulheres.length >= 2) {
+                const mediaHomens = homens.reduce((sum, m) => sum + participacoes[m.nome], 0) / homens.length;
+                const mediaMulheres = mulheres.reduce((sum, m) => sum + participacoes[m.nome], 0) / mulheres.length;
+                pool = mediaHomens <= mediaMulheres ? homens : mulheres;
+            } else if (homens.length >= 2) {
+                pool = homens;
+            } else if (mulheres.length >= 2) {
+                pool = mulheres;
+            } else {
+                return;
             }
+
+            pool.sort((a, b) => participacoes[a.nome] - participacoes[b.nome]);
+            const minParticipacoes = participacoes[pool[0].nome];
+            const candidatos = pool.filter(m => participacoes[m.nome] === minParticipacoes);
+            shuffle(candidatos);
+            selecionados = candidatos.slice(0, 2);
         }
 
         if (selecionados.length === qtdNecessaria) {

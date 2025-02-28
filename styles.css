@@ -4,15 +4,20 @@ body {
     background-color: #f0f8ff;
     margin: 0;
     padding: 20px;
-    color: #1a3850; /* Tom mais escuro para melhor contraste */
+    color: #1a3850;
 }
 
-/* Estilo do cabeçalho */
-h1 {
+/* Estilo do cabeçalho com logotipo */
+header {
     text-align: center;
-    color: #2c3e50;
-    margin-bottom: 30px;
-    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.logo {
+    max-width: 200px; /* Tamanho ajustável do logotipo */
+    height: auto;
+    display: block;
+    margin: 0 auto;
 }
 
 /* Navegação */
@@ -107,7 +112,7 @@ form {
     font-weight: 500;
     transition: all 0.2s;
     pointer-events: none;
-    background-color: #f8f9fa; /* Para evitar sobreposição no fundo */
+    background-color: #f8f9fa;
     padding: 0 5px;
 }
 
@@ -283,5 +288,9 @@ button:hover {
 
     button {
         width: 100%;
+    }
+
+    .logo {
+        max-width: 150px; /* Reduz o logotipo em telas menores */
     }
 }

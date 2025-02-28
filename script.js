@@ -134,8 +134,12 @@ onAuthStateChanged(auth, (user) => {
 // --- Funções Utilitárias ---
 
 function showTab(tabId) {
+    // Oculta todas as abas
     document.querySelectorAll('.tab').forEach(tab => tab.style.display = 'none');
-    document.getElementById(tabId).style.display = 'block';
+    // Exibe a aba específica, mas apenas se o usuário estiver logado
+     if (userUid) {
+        document.getElementById(tabId).style.display = 'block';
+    }
 }
 
 function toggleConjuge() {
@@ -502,7 +506,7 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
     let escalaHTML = '<ul>';
     dias.forEach(dia => {
         if (dia.selecionados.length > 0) {
-            escalaHTML += `<li>${dia.data.toLocaleDateString()} - ${dia.tipo}: ${dia.selecionados.map(m => m.nome).join(', ')}</li>`;
+      h      escalaHTML += `<li>${dia.data.toLocaleDateString()} - ${dia.tipo}: ${dia.selecionados.map(m => m.nome).join(', ')}</li>`;
         }
     });
     escalaHTML += '</ul>';

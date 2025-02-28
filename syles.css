@@ -68,13 +68,12 @@ nav button:hover {
     margin: 20px auto;
     max-width: 900px;
     border-left: 5px solid #4682b4;
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
+    /* Removido opacity: 0; e transition daqui.  O display: none no HTML já cuida disso. */
 }
 
-.tab[style*="display: block"] {
+/* .tab[style*="display: block"] {  Removido: desnecessário com o controle via JS
     opacity: 1;
-}
+} */
 
 /* Formulários */
 form {
@@ -94,7 +93,8 @@ form {
     padding: 10px;
     border: 1px solid #87ceeb;
     border-radius: 4px;
-    width: 100%;
+    width: 100%; /* Importante para ocupar a largura total */
+    box-sizing: border-box; /* Inclui padding e border na largura total */
     font-size: 16px;
     background-color: #fff;
     transition: border-color 0.3s;
@@ -114,13 +114,19 @@ form {
     font-weight: 500;
     transition: all 0.2s;
     pointer-events: none;
-    background-color: #f8f9fa;
+    background-color: #f8f9fa; /* Cor de fundo para cobrir a borda */
     padding: 0 5px;
+}
+/*Estilo para quando o campo esta preenchido*/
+.input-group input:not(:placeholder-shown) + label,
+.input-group select:not([value=""]) + label { /*Seletor correto*/
+    top: -10px;
+    font-size: 12px;
+    color: #4682b4;
 }
 
 .input-group input:focus + label,
-.input-group input:not(:placeholder-shown) + label,
-.input-group select:focus + label {
+.input-group select:focus + label{
     top: -10px;
     font-size: 12px;
     color: #4682b4;
@@ -187,7 +193,7 @@ ul li:nth-child(even) {
 }
 
 /* Botões de exclusão */
-button {
+button {  /* Estilo geral para todos os botões */
     background-color: #dc3545;
     color: white;
     border: none;
@@ -343,7 +349,7 @@ button:hover {
         gap: 10px;
     }
 
-    button {
+    button { /* Todos os botões */
         width: 100%;
     }
 

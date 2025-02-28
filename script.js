@@ -37,17 +37,20 @@ const btnCadastro = document.getElementById("btnCadastro");
 const btnRestricoes = document.getElementById("btnRestricoes");
 const btnRestricoesPermanentes = document.getElementById("btnRestricoesPermanentes");
 const btnEscala = document.getElementById("btnEscala");
+const btnExportarXLSX = document.getElementById("btnExportarXLSX");
 
 
 
 function showLoginForm() {
     loginModal.style.display = 'block';
     registerModal.style.display = 'none';
+    loginMessage.textContent = ''; // Limpa mensagens de erro
 }
 
 function showRegisterForm() {
     registerModal.style.display = 'block';
     loginModal.style.display = 'none';
+    registerMessage.textContent = ''; // Limpa mensagens de erro
 }
 
 // Event listeners para mostrar/ocultar modais
@@ -63,69 +66,68 @@ document.querySelectorAll('.close-button').forEach(button => {
 
 
 
-loginForm.addEventListener('submit', (e) => {
+loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
 
-    signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            loginModal.style.display = 'none';
-            // User is signed in.  No need to set userUid here; onAuthStateChanged handles it.
-        })
-        .catch((error) => {
-            loginMessage.textContent = `Erro no login: ${error.message}`;
-        });
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        loginModal.style.display = 'none';
+        // User is signed in (onAuthStateChanged handles the rest)
+    } catch (error) {
+        loginMessage.textContent = `Erro no login: ${error.message}`;
+    }
 });
 
-registerForm.addEventListener('submit', (e) => {
+registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('registerEmail').value;
     const password = document.getElementById('registerPassword').value;
 
-    createUserWithEmailAndPassword(auth, email, password)
-    .then((userCredential) => {
-      registerModal.style.display = 'none';
-        // User is signed in.  No need to set userUid here; onAuthStateChanged handles it.
-        // Automatically signs in the user.
-    })
-    .catch((error) => {
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        registerModal.style.display = 'none';
+        // User is signed in (onAuthStateChanged handles the rest)
+    } catch (error) {
         registerMessage.textContent = `Erro no cadastro: ${error.message}`;
-    });
+    }
 });
 
-btnLogout.addEventListener('click', () => {
-    signOut(auth).then(() => {
-        // Sign-out successful.  onAuthStateChanged handles the UI update.
-    }).catch((error) => {
+btnLogout.addEventListener('click', async () => {
+    try {
+        await signOut(auth);
+        // Sign-out successful (onAuthStateChanged handles the rest)
+    } catch (error) {
         console.error("Erro no logout:", error);
-    });
+    }
 });
 
 
-// Observador de estado de autenticação *IMPORTANTE*
+// Observador de estado de autenticação
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        userUid = user.uid; // Define o UID do usuário logado
+        userUid = user.uid;
         console.log("Usuário logado:", user.email, "UID:", userUid);
-        btnLogout.style.display = 'block'; //mostra botão logout
+        btnLogout.style.display = 'block';
         btnCadastro.style.display = 'block';
         btnRestricoes.style.display = 'block';
         btnRestricoesPermanentes.style.display = 'block';
         btnEscala.style.display = 'block';
-        carregarDados(); // Carrega os dados do usuário
+        btnExportarXLSX.style.display = 'block'; // Mostra o botão de exportar
+        carregarDados();
 
     } else {
-        userUid = null; // Limpa o UID quando o usuário faz logout
+        userUid = null;
         console.log("Nenhum usuário logado");
-        btnLogout.style.display = 'none'; //oculta botão logout
+        btnLogout.style.display = 'none';
         btnCadastro.style.display = 'none';
         btnRestricoes.style.display = 'none';
         btnRestricoesPermanentes.style.display = 'none';
         btnEscala.style.display = 'none';
-        // Limpa os dados das listas quando o usuário faz logout
+        btnExportarXLSX.style.display = 'none'; // Oculta o botão de exportar
         limparListas();
-      showLoginForm();
+        showLoginForm(); // Mostra o modal de login
     }
 });
 
@@ -144,19 +146,23 @@ function toggleConjuge() {
 
 // --- Funções de Dados (Firebase) ---
 
-function salvarDados() {
-    if (!userUid) return; // Só salva se tiver usuário logado
+async function salvarDados() {
+    if (!userUid) return;
 
     const dados = { membros, restricoes, restricoesPermanentes };
     const userRef = ref(database, `users/${userUid}`);
-    set(userRef, dados).catch(error => console.error("Erro ao salvar dados:", error));
+    try {
+        await set(userRef, dados);
+    } catch (error) {
+        console.error("Erro ao salvar dados:", error);
+    }
 }
 
 function carregarDados() {
     if (!userUid) return;
 
     const userRef = ref(database, `users/${userUid}`);
-    onValue(userRef, (snapshot) => {
+    onValue(userRef, (snapshot) => {  // onValue já é assíncrono, não precisa de async/await aqui
         const dados = snapshot.val();
         if (dados) {
             membros = dados.membros || [];
@@ -170,41 +176,39 @@ function carregarDados() {
     });
 }
 
-// Função para limpar as listas quando o usuário faz logout
 function limparListas() {
     document.getElementById('listaMembros').innerHTML = '';
     document.getElementById('listaRestricoes').innerHTML = '';
     document.getElementById('listaRestricoesPermanentes').innerHTML = '';
-    // Limpa os selects também
     const selects = [document.getElementById('membroRestricao'), document.getElementById('membroRestricaoPermanente')];
     selects.forEach(select => select.innerHTML = '<option value="">Selecione um membro</option>');
 }
 
 
 
-function excluirMembro(index) {
+async function excluirMembro(index) {
     if (!userUid) return;
 
     membros.splice(index, 1);
     atualizarListaMembros();
     atualizarSelectMembros();
-    salvarDados(); // Salva no Firebase
+    await salvarDados(); // Usa await para garantir que os dados sejam salvos antes de continuar
 }
 
-function excluirRestricao(index) {
+async function excluirRestricao(index) {
     if (!userUid) return;
 
     restricoes.splice(index, 1);
     atualizarListaRestricoes();
-    salvarDados(); // Salva no Firebase
+    await salvarDados();
 }
 
-function excluirRestricaoPermanente(index) {
+async function excluirRestricaoPermanente(index) {
     if (!userUid) return;
 
     restricoesPermanentes.splice(index, 1);
     atualizarListaRestricoesPermanentes();
-    salvarDados(); // Salva no Firebase
+    await salvarDados();
 }
 
 
@@ -245,9 +249,9 @@ function atualizarListaRestricoesPermanentes() {
 
 // --- Funções de Cadastro ---
 
-document.getElementById('formCadastro').addEventListener('submit', (e) => {
+document.getElementById('formCadastro').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!userUid) return; //Verifica se há usuário logado
+    if (!userUid) return;
 
     const nome = document.getElementById('nome').value;
     const genero = document.getElementById('genero').value;
@@ -262,12 +266,12 @@ document.getElementById('formCadastro').addEventListener('submit', (e) => {
     membros.push({ nome, genero, conjuge: nomeConjuge });
     atualizarListaMembros();
     atualizarSelectMembros();
-    salvarDados();  // Salva no Firebase
+    await salvarDados();
     e.target.reset();
     toggleConjuge();
 });
 
-document.getElementById('formRestricao').addEventListener('submit', (e) => {
+document.getElementById('formRestricao').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!userUid) return;
 
@@ -286,11 +290,11 @@ document.getElementById('formRestricao').addEventListener('submit', (e) => {
 
     restricoes.push({ membro, inicio, fim });
     atualizarListaRestricoes();
-    salvarDados(); // Salva no Firebase
+    await salvarDados();
     e.target.reset();
 });
 
-document.getElementById('formRestricaoPermanente').addEventListener('submit', (e) => {
+document.getElementById('formRestricaoPermanente').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!userUid) return;
 
@@ -304,11 +308,11 @@ document.getElementById('formRestricaoPermanente').addEventListener('submit', (e
 
     restricoesPermanentes.push({ membro, diaSemana });
     atualizarListaRestricoesPermanentes();
-    salvarDados(); // Salva no Firebase
+    await salvarDados();
     e.target.reset();
 });
 
-// --- Funções de Geração da Escala (MESMAS DA SUA VERSÃO) ---
+// --- Funções de Geração da Escala ---
 
 // Função auxiliar para seleção ponderada (OTIMIZADA)
 function weightedRandom(weights) {
@@ -512,9 +516,13 @@ document.getElementById('formEscala').addEventListener('submit', (e) => {
     resultado.innerHTML += relatorio;
 });
 
-// --- Funções de Exportar/Inicializar (sem localStorage) ---
+// --- Funções de Exportar ---
 
 function exportarEscalaXLSX() {
+    if (!userUid) { // Verifica se o usuário está logado
+        alert("Você precisa estar logado para exportar a escala.");
+        return;
+    }
     const wb = XLSX.utils.book_new();
     const dadosEscala = [['Data', 'Tipo', 'Pessoa 1', 'Pessoa 2']];
     document.querySelectorAll('#resultadoEscala ul li').forEach(li => {
@@ -528,6 +536,5 @@ function exportarEscalaXLSX() {
     XLSX.writeFile(wb, 'escala.xlsx');
 }
 
-// Inicialização (não precisa mais do DOMContentLoaded, o onAuthStateChanged já cuida disso)
-// O código é executado quando o script é carregado, e o onAuthStateChanged garante que as ações
-// que dependem do usuário sejam executadas no momento correto.
+// Inicialização: Mostra o formulário de login
+showLoginForm();

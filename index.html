@@ -4,39 +4,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Escala de Intercessores</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> <!-- Substitua pelo seu código do Font Awesome -->
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <h1>Escala de Intercessores</h1>
     <nav>
-        <button onclick="showTab('cadastro')">Cadastro de Membros</button>
-        <button onclick="showTab('restricoes')">Períodos de Restrição</button>
-        <button onclick="showTab('restricoesPermanentes')">Restrições Permanentes</button>
-        <button onclick="showTab('escala')">Geração da Escala</button>
-        <button onclick="exportarDados()">Exportar Dados (JSON)</button>
+        <button onclick="showTab('cadastro')"><i class="fas fa-user-plus"></i> Cadastro de Membros</button>
+        <button onclick="showTab('restricoes')"><i class="fas fa-calendar-times"></i> Períodos de Restrição</button>
+        <button onclick="showTab('restricoesPermanentes')"><i class="fas fa-ban"></i> Restrições Permanentes</button>
+        <button onclick="showTab('escala')"><i class="fas fa-calendar-check"></i> Geração da Escala</button>
+        <button onclick="exportarDados()"><i class="fas fa-download"></i> Exportar Dados (JSON)</button>
         <input type="file" id="importarArquivo" accept=".json" onchange="importarDados(event)" style="display:none;">
-        <button onclick="document.getElementById('importarArquivo').click()">Importar Dados (JSON)</button>
-        <button onclick="limparDados()">Limpar Dados</button>
+        <button onclick="document.getElementById('importarArquivo').click()"><i class="fas fa-upload"></i> Importar Dados (JSON)</button>
+        <button onclick="limparDados()"><i class="fas fa-trash"></i> Limpar Dados</button>
     </nav>
 
     <!-- Aba Cadastro de Membros -->
     <div id="cadastro" class="tab">
         <h2>Cadastro de Membros</h2>
         <form id="formCadastro">
-            <label>Nome: <input type="text" id="nome" required></label>
-            <label>Gênero: 
+            <div class="input-group">
+                <input type="text" id="nome" required placeholder=" ">
+                <label for="nome">Nome</label>
+            </div>
+            <div class="input-group">
                 <select id="genero" required>
+                    <option value="" disabled selected hidden></option>
                     <option value="M">Masculino</option>
                     <option value="F">Feminino</option>
                 </select>
-            </label>
-            <label>Cônjuge participa? 
+                <label for="genero">Gênero</label>
+            </div>
+            <div class="input-group">
                 <input type="checkbox" id="conjugeParticipa" onchange="toggleConjuge()">
-            </label>
-            <label id="conjugeField" style="display: none;">
-                Nome do cônjuge: <input type="text" id="nomeConjuge">
-            </label>
+                <label for="conjugeParticipa">Cônjuge participa?</label>
+            </div>
+            <div class="input-group" id="conjugeField" style="display: none;">
+                <input type="text" id="nomeConjuge" placeholder=" ">
+                <label for="nomeConjuge">Nome do cônjuge</label>
+            </div>
             <button type="submit">Cadastrar</button>
         </form>
         <h3>Membros Cadastrados</h3>
@@ -47,9 +56,18 @@
     <div id="restricoes" class="tab" style="display: none;">
         <h2>Períodos de Restrição</h2>
         <form id="formRestricao">
-            <label>Membro: <select id="membroRestricao"></select></label>
-            <label>Data Início: <input type="date" id="dataInicio" required></label>
-            <label>Data Fim: <input type="date" id="dataFim" required></label>
+            <div class="input-group">
+                <select id="membroRestricao"></select>
+                <label for="membroRestricao">Membro</label>
+            </div>
+            <div class="input-group">
+                <input type="date" id="dataInicio" required placeholder=" ">
+                <label for="dataInicio">Data Início</label>
+            </div>
+            <div class="input-group">
+                <input type="date" id="dataFim" required placeholder=" ">
+                <label for="dataFim">Data Fim</label>
+            </div>
             <button type="submit">Registrar</button>
         </form>
         <h3>Restrições Cadastradas</h3>
@@ -60,15 +78,20 @@
     <div id="restricoesPermanentes" class="tab" style="display: none;">
         <h2>Restrições Permanentes</h2>
         <form id="formRestricaoPermanente">
-            <label>Membro: <select id="membroRestricaoPermanente"></select></label>
-            <label>Dia da Semana:
+            <div class="input-group">
+                <select id="membroRestricaoPermanente"></select>
+                <label for="membroRestricaoPermanente">Membro</label>
+            </div>
+            <div class="input-group">
                 <select id="diaSemana" required>
+                    <option value="" disabled selected hidden></option>
                     <option value="Quarta">Quarta</option>
                     <option value="Domingo Manhã">Domingo Manhã</option>
                     <option value="Domingo Noite">Domingo Noite</option>
                     <option value="Sábado">Sábado</option>
                 </select>
-            </label>
+                <label for="diaSemana">Dia da Semana</label>
+            </div>
             <button type="submit">Registrar</button>
         </form>
         <h3>Restrições Permanentes Cadastradas</h3>
@@ -80,17 +103,29 @@
         <h2>Geração da Escala</h2>
         <form id="formEscala">
             <label>Escalas a gerar:</label>
-            <label><input type="checkbox" id="escalaCultos" checked> Cultos (Quarta, Domingo Manhã e Noite)</label>
-            <label><input type="checkbox" id="escalaSabado" checked> Reuniões Online (Sábado)</label>
-            <label><input type="checkbox" id="escalaOração" checked> Oração no WhatsApp (Diário)</label>
-            <label>Quantidade por culto: 
+            <div class="input-group">
+                <input type="checkbox" id="escalaCultos" checked>
+                <label for="escalaCultos">Cultos (Quarta, Domingo Manhã e Noite)</label>
+            </div>
+            <div class="input-group">
+                <input type="checkbox" id="escalaSabado" checked>
+                <label for="escalaSabado">Reuniões Online (Sábado)</label>
+            </div>
+            <div class="input-group">
+                <input type="checkbox" id="escalaOração" checked>
+                <label for="escalaOração">Oração no WhatsApp (Diário)</label>
+            </div>
+            <div class="input-group">
                 <select id="quantidadeCultos" required>
+                    <option value="" disabled selected hidden></option>
                     <option value="1">1 pessoa</option>
                     <option value="2">2 pessoas</option>
                 </select>
-            </label>
-            <label>Mês: 
+                <label for="quantidadeCultos">Quantidade por culto</label>
+            </div>
+            <div class="input-group">
                 <select id="mesEscala" required>
+                    <option value="" disabled selected hidden></option>
                     <option value="0">Janeiro</option>
                     <option value="1">Fevereiro</option>
                     <option value="2">Março</option>
@@ -104,8 +139,12 @@
                     <option value="10">Novembro</option>
                     <option value="11">Dezembro</option>
                 </select>
-            </label>
-            <label>Ano: <input type="number" id="anoEscala" min="2025" value="2025" required></label>
+                <label for="mesEscala">Mês</label>
+            </div>
+            <div class="input-group">
+                <input type="number" id="anoEscala" min="2025" value="2025" required placeholder=" ">
+                <label for="anoEscala">Ano</label>
+            </div>
             <button type="submit">Gerar Escala</button>
         </form>
         <div id="resultadoEscala"></div>

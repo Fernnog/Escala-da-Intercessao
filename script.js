@@ -194,53 +194,66 @@ function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessa
 }
 // Função de revisão da escala (COM LIMITE DINÂMICO)
 function revisarEscala(dias, participacoes) {
+    let escalaAlterada = true; // Flag para controlar iterações
+    let iteracoes = 0; // Contador de iterações para evitar loops infinitos (segurança)
+    const maxIteracoes = 10; // Limite máximo de iterações - ajuste se necessário
 
-    const mediaParticipacoes = Object.values(participacoes).reduce((sum, p) => sum + p, 0) / Object.values(participacoes).length;
-    const limiteDiferenca = Math.max(2, mediaParticipacoes * 0.2); // 20% da média, ou pelo menos 2
+    while (escalaAlterada && iteracoes < maxIteracoes) {
+        escalaAlterada = false; // Assume que não haverá mais alterações nesta iteração
+        iteracoes++;
 
-    const maxParticipacoes = Math.max(...Object.values(participacoes));
-    const minParticipacoes = Math.min(...Object.values(participacoes));
+        const participacoesOrdenadas = Object.entries(participacoes).sort(([, a], [, b]) => a - b);
+        const membroMenosParticipou = participacoesOrdenadas[0][0];
+        const membroMaisParticipou = participacoesOrdenadas[participacoesOrdenadas.length - 1][0];
+        const diferencaParticipacao = participacoes[membroMaisParticipou] - participacoes[membroMenosParticipou];
 
-    if (maxParticipacoes - minParticipacoes > limiteDiferenca) {
-        const membrosOver = Object.entries(participacoes)
-            .filter(([_, count]) => count === maxParticipacoes)
-            .map(([nome]) => nome);
-        const membrosUnder = Object.entries(participacoes)
-            .filter(([_, count]) => count === minParticipacoes)
-            .map(([nome]) => nome);
+        if (diferencaParticipacao > 1) { // Se a diferença for maior que 1, tenta balancear
+            for (const dia of dias) {
+                for (let i = 0; i < dia.selecionados.length; i++) {
+                    const membroAtual = dia.selecionados[i];
+                    if (membroAtual.nome === membroMaisParticipou) { // Se membro com mais participação está escalado
+                        const membrosDisponiveisParaSubstituir = membros.filter(m => {
+                            // Critérios de disponibilidade e restrição (já existentes)
+                            const restricaoTemp = restricoes.some(r =>
+                                r.membro === m.nome && dia.data >= r.inicio && dia.data <= r.fim
+                            );
+                            const restricaoPerm = restricoesPermanentes.some(r =>
+                                r.membro === m.nome && r.diaSemana === dia.tipo
+                            );
+                            // Critério adicional: Não ser o membro que já está na posição oposta (se houver 2 pessoas)
+                            const naoSerParceiroAtual = dia.selecionados.length === 2 ? m.nome !== dia.selecionados[1 - i].nome : true;
+                            // Critério adicional: Ser o membro que menos participou (ou um dos menos)
+                            const ehMembroMenosParticipou = m.nome === membroMenosParticipou;
 
-        dias.forEach(dia => {
-            dia.selecionados.forEach((membro, idx) => {
-                if (membrosOver.includes(membro.nome)) {
-                    const membrosDisponiveis = membros.filter(m => {
-                        const restricaoTemp = restricoes.some(r =>
-                            r.membro === m.nome && dia.data >= r.inicio && dia.data <= r.fim
+                            return !restricaoTemp && !restricaoPerm && naoSerParceiroAtual && ehMembroMenosParticipou && m.nome !== membroAtual.nome;
+                        });
+
+                        // Tenta substituir pelo membro que menos participou
+                        const substitutoIdeal = membrosDisponiveisParaSubstituir.find(sub =>
+                            (dia.selecionados.length === 1 || // Se for escala de 1 pessoa, qualquer um serve
+                                (sub.genero === dia.selecionados[1 - i].genero || // Se for de 2, respeita gênero ou cônjuge
+                                    sub.conjuge === dia.selecionados[1 - i].nome ||
+                                    dia.selecionados[1 - i].conjuge === sub.nome))
                         );
-                        const restricaoPerm = restricoesPermanentes.some(r =>
-                            r.membro === m.nome && r.diaSemana === dia.tipo
-                        );
-                        return !restricaoTemp && !restricaoPerm && m.nome !== membro.nome;
-                    });
 
-                    const substituto = membrosDisponiveis.find(m =>
-                        membrosUnder.includes(m.nome) &&
-                        (dia.selecionados.length === 1 ||
-                            (m.genero === dia.selecionados[1 - idx].genero ||
-                                m.conjuge === dia.selecionados[1 - idx].nome ||
-                                dia.selecionados[1 - idx].conjuge === m.nome))
-                    );
-
-                    if (substituto) {
-                        dia.selecionados[idx] = substituto;
-                        participacoes[membro.nome]--;
-                        participacoes[substituto.nome]++;
+                        if (substitutoIdeal) {
+                            dia.selecionados[i] = substitutoIdeal;
+                            participacoes[membroAtual.nome]--;
+                            participacoes[substitutoIdeal.nome]++;
+                            escalaAlterada = true; // Sinaliza que a escala foi alterada nesta iteração
+                            break; // Importante: Após uma substituição, sai do loop interno para reavaliar a escala
+                        }
                     }
                 }
-            });
-        });
+                if (escalaAlterada) break; // Se houve alteração em um dia, reavalia a escala desde o início
+            }
+        }
+    }
+
+    if (iteracoes >= maxIteracoes) {
+        console.warn("Revisão da escala atingiu o limite de iterações, pode não estar totalmente balanceada.");
     }
 }
-
 
 // Evento de submissão do formulário
 document.getElementById('formEscala').addEventListener('submit', (e) => {
@@ -411,3 +424,4 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarDados();
     showTab('cadastro');
 });
+

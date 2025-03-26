@@ -70,19 +70,6 @@ nav button:active {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Estilo de contorno para ações secundárias (Importar e Limpar Dados) */
-nav button:nth-child(5), nav button:nth-child(6) {
-    background: transparent;
-    border: 2px solid #ff8c00;
-    color: #ff8c00;
-}
-
-nav button:nth-child(5):hover, nav button:nth-child(6):hover {
-    background: #ff8c00;
-    color: white;
-    box-shadow: 0 0 15px rgba(255, 140, 0, 0.7);
-}
-
 /* Abas */
 .tab {
     background-color: #ffffff;

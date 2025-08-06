@@ -1,9 +1,23 @@
 import { membros, restricoes, restricoesPermanentes } from './data-manager.js';
 import { exibirIndiceEquilibrio, renderEscalaEmCards, renderAnaliseConcentracao, renderizarFiltros, configurarDragAndDrop } from './ui.js';
-// NOVA IMPORTAÇÃO: Importa a função centralizada de verificação.
 import { checkMemberAvailability } from './availability.js';
 
-// --- Funções de Lógica de Seleção (SEM ALTERAÇÕES) ---
+/**
+ * NOVA FUNÇÃO HELPER: Verifica se dois membros são compatíveis para formar uma dupla.
+ * A compatibilidade ocorre se forem do mesmo gênero ou se forem cônjuges.
+ * @param {object} membroA - O primeiro membro.
+ * @param {object} membroB - O segundo membro.
+ * @returns {boolean} - Retorna true se forem compatíveis, false caso contrário.
+ */
+export function saoCompativeis(membroA, membroB) {
+    if (!membroA || !membroB) return false; // Checagem de segurança
+    return (
+        membroA.genero === membroB.genero ||
+        membroA.conjuge === membroB.nome ||
+        membroB.conjuge === membroA.nome
+    );
+}
+
 function weightedRandom(weights) {
     let random = Math.random();
     let cumulativeWeight = 0;
@@ -19,10 +33,11 @@ function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessa
 
     const pesos = membrosDisponiveis.map(m => {
         const count = participacoes[m.nome]?.participations || 0;
-        return Math.pow(0.2, count);
+        return Math.pow(0.5, count);
     });
 
     const somaPesos = pesos.reduce((sum, p) => sum + p, 0);
+    
     if (somaPesos === 0) {
         const selecionados = [];
         const disponiveis = [...membrosDisponiveis];
@@ -42,8 +57,9 @@ function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessa
     while (selecionados.length < quantidadeNecessaria && disponiveis.length > 0) {
         const indiceSorteado = weightedRandom(pesosTemp);
         const membroSelecionado = disponiveis.splice(indiceSorteado, 1)[0];
-
+        
         pesosTemp.splice(indiceSorteado, 1);
+        
         const somaPesosTemp = pesosTemp.reduce((sum, p) => sum + p, 0);
         if (somaPesosTemp > 0) {
             pesosTemp = pesosTemp.map(p => p / somaPesosTemp);
@@ -54,11 +70,6 @@ function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessa
     return selecionados;
 }
 
-/**
- * Analisa a concentração de participações para os turnos de Culto.
- * @param {Array} diasGerados - Array com a escala final gerada.
- * @returns {Object} - Um objeto com a análise detalhada por turno.
- */
 function analisarConcentracao(diasGerados) {
     const analise = {};
     const turnosCulto = ['Quarta', 'Domingo Manhã', 'Domingo Noite'];
@@ -69,8 +80,6 @@ function analisarConcentracao(diasGerados) {
         let membrosDisponiveisCount = 0;
 
         membros.forEach(membro => {
-            // MODIFICAÇÃO: A verificação de status agora usa a função centralizada.
-            // A data é null aqui porque a análise é geral para o turno, ignorando restrições temporárias.
             const status = checkMemberAvailability(membro, turno, null);
 
             if (status.type === 'disponivel') {
@@ -96,9 +105,6 @@ function analisarConcentracao(diasGerados) {
     return analise;
 }
 
-/**
- * Configura o listener do formulário de geração de escala.
- */
 export function setupGeradorEscala() {
     document.getElementById('formEscala').addEventListener('submit', (e) => {
         e.preventDefault();
@@ -106,18 +112,15 @@ export function setupGeradorEscala() {
         const resultadoContainer = document.getElementById('resultadoEscala');
         const balanceContainer = document.getElementById('balanceIndexContainer');
         const filtrosContainer = document.getElementById('escala-filtros');
-        
-        if (resultadoContainer) {
-            resultadoContainer.innerHTML = '';
-            resultadoContainer.classList.remove('escala-container');
-        }
-        if (filtrosContainer) {
-            filtrosContainer.innerHTML = '';
-        }
-        if (balanceContainer) {
-            balanceContainer.style.display = 'none';
-            balanceContainer.onclick = null;
-        }
+        const diagnosticContainer = document.getElementById('diagnosticReportContainer');
+
+        resultadoContainer.innerHTML = '';
+        resultadoContainer.classList.remove('escala-container');
+        filtrosContainer.innerHTML = '';
+        diagnosticContainer.innerHTML = '';
+        diagnosticContainer.style.display = 'none';
+        balanceContainer.style.display = 'none';
+        balanceContainer.onclick = null;
 
         const tipoEscalaSelecionado = document.querySelector('input[name="tipoEscala"]:checked').value;
         const gerarCultos = tipoEscalaSelecionado === 'cultos';
@@ -154,14 +157,12 @@ export function setupGeradorEscala() {
         }
 
         dias.forEach(dia => {
-            // MODIFICAÇÃO PRINCIPAL: A lógica de filtro complexa foi substituída
-            // por uma única chamada à função centralizada.
             const membrosDisponiveis = membros.filter(m => {
                 const status = checkMemberAvailability(m, dia.tipo, dia.data);
                 return status.type === 'disponivel';
             });
             
-            const qtdNecessaria = dia.tipo === 'Oração no WhatsApp' ? 1 : (dia.tipo === 'Sábado' ? 1 : quantidadeCultos);
+            const qtdNecessaria = (dia.tipo === 'Oração no WhatsApp' || dia.tipo === 'Sábado') ? 1 : quantidadeCultos;
             
             if (membrosDisponiveis.length >= qtdNecessaria) {
                 let selecionados = [];
@@ -170,15 +171,18 @@ export function setupGeradorEscala() {
                 } else {
                     const primeiro = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, justificationData)[0];
                     if (primeiro) {
-                        const membrosCompatíveis = membrosDisponiveis.filter(m => 
-                            m.nome !== primeiro.nome && 
-                            (m.genero === primeiro.genero || m.conjuge === primeiro.nome || primeiro.conjuge === m.nome)
-                        );
-                        const poolParaSegundo = membrosCompatíveis.length > 0 ? membrosCompatíveis : membrosDisponiveis.filter(m => m.nome !== primeiro.nome);
-                        const segundo = selecionarMembrosComAleatoriedade(poolParaSegundo, 1, justificationData)[0];
+                        const poolParaSegundo = membrosDisponiveis.filter(m => m.nome !== primeiro.nome);
+                        
+                        // LÓGICA ATUALIZADA: USA A FUNÇÃO HELPER saoCompativeis
+                        const membrosCompatíveis = poolParaSegundo.filter(m => saoCompativeis(m, primeiro));
+                        
+                        const poolFinal = membrosCompatíveis.length > 0 ? membrosCompatíveis : poolParaSegundo;
+                        const segundo = selecionarMembrosComAleatoriedade(poolFinal, 1, justificationData)[0];
+                        
                         if (segundo) selecionados = [primeiro, segundo];
                     }
                 }
+
                 if (selecionados.length === qtdNecessaria) {
                     dia.selecionados = selecionados;
                     selecionados.forEach(m => { justificationData[m.nome].participations++; });
@@ -187,14 +191,21 @@ export function setupGeradorEscala() {
         });
 
         renderEscalaEmCards(dias);
-        renderizarFiltros(dias);
+        renderizarFiltros(dias, analisarConcentracao(dias));
         configurarDragAndDrop(dias, justificationData, restricoes, restricoesPermanentes);
         exibirIndiceEquilibrio(justificationData);
         
         if (gerarCultos) {
             const relatorioConcentracao = analisarConcentracao(dias);
+            renderAnaliseConcentracao(relatorioConcentracao, 'all'); 
+            
             if (balanceContainer) {
-                balanceContainer.onclick = () => renderAnaliseConcentracao(relatorioConcentracao);
+                balanceContainer.onclick = () => {
+                    const reportElement = document.getElementById('diagnosticReportContainer');
+                    if (reportElement && reportElement.style.display !== 'none') {
+                        reportElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                };
             }
         }
     });

@@ -1,3 +1,8 @@
+// ARQUIVO: main.js (Versão Completa e Corrigida)
+// DESCRIÇÃO: Este arquivo foi atualizado para remover os listeners de eventos dos botões obsoletos
+// ("Exportar Dados", "Importar Dados", "Limpar Dados"). As importações de funções não utilizadas
+// do 'data-manager.js' também foram removidas para alinhar o código com a nova interface.
+
 /**
  * PONTO DE ENTRADA PRINCIPAL DA APLICAÇÃO (main.js)
  * Responsabilidades:
@@ -14,9 +19,6 @@ import { setupGeradorEscala } from './schedule-generator.js';
 import {
     carregarDados,
     salvarDados,
-    limparDadosGlobais,
-    exportarDados,
-    importarDados,
     adicionarMembro,
     adicionarRestricao,
     adicionarRestricaoPermanente,
@@ -29,8 +31,7 @@ import {
     setupUiListeners,
     showToast,
     exportarEscalaXLSX,
-    setupAnaliseModalListeners,
-    renderDisponibilidadeGeral // <-- ALTERAÇÃO: Importa a nova função
+    renderDisponibilidadeGeral
 } from './ui.js';
 
 
@@ -73,7 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Listeners da Barra de Navegação ---
         document.getElementById('nav-auth').addEventListener('click', () => showTab('auth'));
         document.getElementById('nav-cadastro').addEventListener('click', () => showTab('cadastro'));
-        // <-- ALTERAÇÃO: Adicionado listener para o novo painel -->
         document.getElementById('nav-disponibilidade').addEventListener('click', () => {
             showTab('disponibilidade');
             renderDisponibilidadeGeral();
@@ -83,28 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('nav-escala').addEventListener('click', () => showTab('escala'));
 
         // --- Listeners dos Botões de Ação Globais ---
-        document.getElementById('btn-exportar-dados').addEventListener('click', exportarDados);
-        
-        // Listener do botão de exportar a escala XLSX
         document.getElementById('btn-exportar-xlsx').addEventListener('click', exportarEscalaXLSX);
 
-        document.getElementById('btn-importar-dados').addEventListener('click', () => {
-            document.getElementById('importarArquivo').click();
-        });
-        document.getElementById('importarArquivo').addEventListener('change', (event) => {
-            importarDados(event, auth, database);
-        });
-        
-        document.getElementById('btn-limpar-dados').addEventListener('click', () => {
-            if (confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
-                limparDadosGlobais();
-                salvarDados(auth, database).then(() => {
-                    atualizarTodasAsListas();
-                    document.getElementById('resultadoEscala').innerHTML = '';
-                    showToast('Todos os dados foram limpos.', 'success');
-                });
-            }
-        });
+        // --- Listeners dos botões de import/export/limpar dados foram removidos ---
 
         document.getElementById('logout').addEventListener('click', () => handleLogout(auth));
 
@@ -138,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const membro = document.getElementById('membroRestricao').value;
             const dataInicioStr = document.getElementById('dataInicio').value;
             const dataFimStr = document.getElementById('dataFim').value;
-            const inicio = new Date(dataInicioStr + 'T12:00:00'); // Evita problemas de fuso
+            const inicio = new Date(dataInicioStr + 'T12:00:00');
             const fim = new Date(dataFimStr + 'T12:00:00');
 
             if (!membro) { alert('Selecione um membro!'); return; }
@@ -164,10 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- INICIALIZAÇÃO DA APLICAÇÃO ---
-    // Configura os módulos que precisam de inicialização
     setupAuthListeners(auth, onLoginSuccess);
     setupGeradorEscala();
     setupUiListeners(); 
-    setupAnaliseModalListeners();
     setupEventListeners(); 
 });

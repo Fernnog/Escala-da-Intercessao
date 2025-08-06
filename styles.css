@@ -155,7 +155,9 @@ form {
 /* Estilização específica para checkboxes e radios */
 #formEscala .input-group,
 #cadastro .input-group,
-#suspensaoModal .input-group {
+#suspensaoModal .input-group,
+/* NOVO: Estilo para o filtro do painel de disponibilidade */
+#disponibilidadeContainer .input-group {
     display: flex;
     align-items: center;
     margin-top: 0;
@@ -164,7 +166,9 @@ form {
 #formEscala input[type="checkbox"],
 #formEscala input[type="radio"],
 #cadastro input[type="checkbox"],
-#suspensaoModal input[type="checkbox"] {
+#suspensaoModal input[type="checkbox"],
+/* NOVO: Estilo para o filtro do painel de disponibilidade */
+#disponibilidadeContainer input[type="checkbox"] {
     accent-color: #ff8c00;
     width: 18px;
     height: 18px;
@@ -175,7 +179,8 @@ form {
 #formEscala input[type="checkbox"]:hover,
 #formEscala input[type="radio"]:hover,
 #cadastro input[type="checkbox"]:hover,
-#suspensaoModal input[type="checkbox"]:hover {
+#suspensaoModal input[type="checkbox"]:hover,
+#disponibilidadeContainer input[type="checkbox"]:hover {
     opacity: 0.8;
 }
 
@@ -511,6 +516,11 @@ button:active {
     margin-top: 20px;
 }
 
+/* Adiciona a lógica para ocultar a coluna de disponíveis */
+#disponibilidadeContainer.hide-available .disponiveis {
+    display: none;
+}
+
 .disponibilidade-turno-bloco {
     margin-bottom: 0;
     background-color: #f8f9fa;
@@ -578,10 +588,6 @@ button:active {
     transform: none;
 }
 
-
-/* ================ FIM DOS NOVOS ESTILOS ================ */
-
-
 /* Botão de exportar XLSX */
 #btn-exportar-xlsx {
     background: linear-gradient(45deg, #17a2b8, #138496);
@@ -618,54 +624,21 @@ footer {
     gap: 15px;
 }
 
-/* ===== NOVOS ESTILOS PARA LEGENDA DE ÍCONES (Prioridade 2) ===== */
-.icon-legend {
-    background: rgba(255, 255, 255, 0.15);
-    padding: 10px 20px;
-    border-radius: 8px;
-    max-width: 90%;
-    text-align: left;
-}
-
-.icon-legend h6 {
-    margin: 0 0 8px 0;
-    font-weight: bold;
-    font-size: 0.9em;
-    text-transform: uppercase;
-    text-align: center;
-}
-
-.icon-legend ul {
+/* Legenda de Ícones no Rodapé */
+#icon-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
     justify-content: center;
+    gap: 15px;
+    font-size: 0.9em;
+    opacity: 0.8;
 }
 
-.icon-legend li {
-    display: flex;
+#icon-legend span {
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.85em;
-    background: none;
-    box-shadow: none;
-    padding: 0;
-    margin: 0;
-    transform: none; /* Override de hover */
+    gap: 5px;
 }
-
-.icon-legend li:hover {
-    background: none;
-    transform: none;
-}
-
-.icon-legend .status-icon {
-    margin-left: 0;
-}
-/* ===== FIM DOS NOVOS ESTILOS DE LEGENDA ===== */
 
 
 /* Responsividade */
@@ -724,6 +697,7 @@ footer {
 #balanceIndexContainer {
     margin: 25px 0; padding: 20px; background-color: #f8f9fa;
     border-radius: 8px; text-align: center;
+    cursor: pointer; /* MODIFICADO: Indica que é clicável para rolar */
 }
 #balanceIndexContainer h4 {
     margin-top: 0; margin-bottom: 15px; font-size: 1.1em; color: #495057; background: none; -webkit-text-fill-color: initial; text-shadow: none;
@@ -739,78 +713,51 @@ footer {
     color: white; font-weight: bold; font-size: 0.9em;
 }
 
+/* MODIFICADO: Estilo para o PAINEL DE ANÁLISE INTEGRADO */
 #diagnosticReportContainer {
-    display: none;
-    margin-top: 30px; padding: 25px; background-color: #fff9f2;
-    border: 1px solid #ffebcc; border-radius: 8px;
+    display: none; /* Inicia oculto e será exibido via JS */
+    margin-top: 30px;
+    padding: 25px;
+    background-color: #fff9f2; /* Um fundo suave para diferenciar */
+    border: 1px solid #ffebcc;
+    border-radius: 8px;
+    transition: all 0.3s ease-in-out;
 }
-#diagnosticReportContainer h4 {
-    text-align: center; color: #c82333; margin-top: 0; margin-bottom: 20px; background: none; -webkit-text-fill-color: initial; text-shadow: none;
-}
-.diagnostic-table {
-    width: 100%; border-collapse: collapse; font-size: 0.95em;
-}
-.diagnostic-table th, .diagnostic-table td {
-    padding: 12px; text-align: left; border-bottom: 1px solid #ffebcc;
-}
-.diagnostic-table th { background-color: #fff0db; font-weight: bold; }
-.diagnostic-table tr:hover { background-color: #fff5e8; }
-.status-cell .fas { margin-right: 8px; font-size: 1.1em; }
-.status-available { color: #28a745; }
-.status-restricted-perm { color: #dc3545; }
-.status-suspended { color: #ffc107; }
-.status-restricted-temp { color: #17a2b8; }
-
-/* ===== ESTILOS PARA O NOVO MODAL DE ANÁLISE ===== */
-#analiseConcentracaoModal .modal-content {
-    max-width: 700px; /* Um pouco maior para caber a análise */
-}
-
-.modal-header {
+/* MODIFICADO: Adiciona layout flex para os blocos de turno */
+#diagnosticReportContainer .analysis-content {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #e9ecef;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
 }
 
-.close-button {
-    background: none;
-    border: none;
-    font-size: 2.5rem;
-    font-weight: 300;
-    line-height: 1;
-    color: #6c757d;
-    cursor: pointer;
-    box-shadow: none;
-    padding: 0 10px;
-}
-.close-button:hover {
-    color: #dc3545;
-    transform: none; /* remove o efeito de hover padrão de botões */
-}
-
-.modal-body {
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-.analise-turno-bloco { 
-    margin-bottom: 25px; 
+/* MODIFICADO: Adapta o bloco de análise para o novo layout */
+#diagnosticReportContainer .analise-turno-bloco {
+    flex: 1;
+    min-width: 300px; /* Garante que não fiquem muito espremidos */
+    margin-bottom: 0;
     background-color: #f8f9fa;
     padding: 15px;
     border-radius: 6px;
     border-left: 4px solid #17a2b8;
 }
-.analise-turno-bloco h5 { 
-    border-bottom: 2px solid #ffc107; 
+#diagnosticReportContainer .analise-turno-bloco h5 {
+    border-bottom: 2px solid #ffc107;
     padding-bottom: 8px;
     margin-top: 0;
     font-size: 1.2em;
 }
-.analise-turno-bloco h6 {
-    margin-top: 20px;
+#diagnosticReportContainer .analise-turno-bloco h6 {
+    margin-top: 15px;
     margin-bottom: 10px;
     color: #343a40;
+}
+#diagnosticReportContainer .analise-turno-bloco p {
+    font-size: 0.9em;
+    margin: 8px 0;
+}
+
+/* Remove estilos do modal que não são mais necessários para análise */
+.modal-header, .close-button, .modal-body {
+    /* Estilos mantidos para o modal de suspensão, mas não afetam mais a análise */
 }

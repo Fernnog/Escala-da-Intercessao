@@ -185,7 +185,7 @@ form {
 
 
 /* Botões de formulário e secundários */
-form button, .secondary-button, .confirm-button {
+form button, .secondary-button {
     color: white;
     border: none;
     padding: 12px 25px;
@@ -197,16 +197,16 @@ form button, .secondary-button, .confirm-button {
     transition: transform 0.3s, box-shadow 0.3s;
 }
 
-form button, .confirm-button {
+form button {
     background: linear-gradient(45deg, #28a745, #34d058);
 }
 
-form button:hover, .confirm-button:hover {
+form button:hover {
     transform: translateY(-3px);
     box-shadow: 0 0 15px rgba(40, 167, 69, 0.7);
 }
 
-form button:active, .confirm-button:active {
+form button:active {
     transform: translateY(1px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -271,17 +271,6 @@ button:hover {
 button:active {
     transform: translateY(1px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* NOVO: Botão de aviso */
-.warning-button {
-    background: linear-gradient(45deg, #ffc107, #ffda58);
-    color: #343a40;
-    font-weight: bold;
-}
-.warning-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 0 15px rgba(255, 193, 7, 0.7);
 }
 
 /* Estilo para gênero nos cadastros */
@@ -659,8 +648,8 @@ footer {
 .modal-content h3 { margin-top: 0; color: #2c3e50; background: none; -webkit-text-fill-color: initial; text-shadow: none; }
 .modal-options .input-group { display: flex; align-items: center; margin-bottom: 15px; }
 .modal-options label { position: static; transform: none; pointer-events: auto; background: none; padding: 0; color: #1a3850; font-size: 16px; font-weight: normal; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
-.modal-actions button { width: auto; flex-grow: 1; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.modal-actions button { width: auto; }
 
 /* ===== ESTILOS PARA FEEDBACK E DIAGNÓSTICO ===== */
 #toast-container {
@@ -739,33 +728,7 @@ footer {
     margin: 8px 0;
 }
 
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #e9ecef;
-    padding-bottom: 15px;
-    margin-bottom: 20px;
-}
-
-.close-button {
-    background: transparent;
-    border: none;
-    font-size: 1.5rem;
-    color: #6c757d;
-    cursor: pointer;
-    padding: 0 10px;
-}
-.close-button:hover {
-    color: #343a40;
-    background-color: #f1f1f1;
-    border-radius: 50%;
-    transform: none;
-    box-shadow: none;
-}
-.modal-body {
-    line-height: 1.6;
-}
+.modal-header, .close-button, .modal-body { }
 
 /* ===== ESTILOS PARA ESCALAS SALVAS ===== */
 .saved-schedules-container {
@@ -868,8 +831,7 @@ footer {
     .input-group { margin-top: 15px; }
     #formEscala .input-group { flex-direction: row; align-items: center; } /* Mantém radio na linha */
     ul li { flex-direction: column; align-items: flex-start; gap: 10px; }
-    .modal-actions button { min-width: 100%;}
-    button, .secondary-button, .confirm-button, .warning-button { width: 100%; }
+    button, .secondary-button { width: 100%; }
     .logo { max-width: 120px; }
     #listaMembros li { gap: 5px; }
     #listaMembros li > div:last-child { flex-direction: row; width: 100%; }
@@ -923,31 +885,4 @@ footer {
    align-items: center;
    flex-wrap: wrap;
    gap: 5px;
-}
-
-/* ===== NOVOS ESTILOS PARA MODAL DE VALIDAÇÃO DE NOMES ===== */
-
-#nameValidationModalBody p {
-    margin-bottom: 1.2rem;
-}
-
-#nameValidationModalBody strong {
-    color: #af4d00;
-    font-weight: 700;
-}
-
-.suggestion-box {
-    background-color: #e6ffed;
-    border-left: 4px solid #28a745;
-    padding: 10px 15px;
-    margin-bottom: 1.5rem;
-    border-radius: 4px;
-}
-
-.suggestion-box p {
-    margin: 0.5rem 0;
-}
-
-.modal-actions.validation-actions {
-    justify-content: space-between;
 }

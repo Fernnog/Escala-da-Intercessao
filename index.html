@@ -250,29 +250,6 @@
         </div>
     </div>
 
-    <!-- NOVO: Modal para Validação de Nomes na Importação -->
-    <div id="nameValidationModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="nameValidationModalTitle">Corrigir Nome de Membro</h3>
-                <button id="btn-fechar-validacao" class="close-button">&times;</button>
-            </div>
-            <div id="nameValidationModalBody" class="modal-body">
-                <p>O nome <strong id="unrecognizedName"></strong> da planilha não foi encontrado no sistema.</p>
-                <div class="suggestion-box">
-                    <p>Sugestão baseada em similaridade:</p>
-                    <p>Você quis dizer <strong id="suggestedName"></strong>?</p>
-                </div>
-                <p>Como deseja prosseguir?</p>
-            </div>
-            <div class="modal-actions validation-actions">
-                <button id="btn-confirmar-sugestao" class="confirm-button">Sim, Usar Sugestão</button>
-                <button id="btn-ignorar-membro" class="warning-button">Ignorar este Membro</button>
-                <button id="btn-cancelar-importacao">Cancelar Toda a Importação</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Container para Notificações Toast -->
     <div id="toast-container"></div>
 

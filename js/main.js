@@ -1,7 +1,4 @@
-// ARQUIVO: main.js (Versão Completa e Corrigida)
-// DESCRIÇÃO: Este arquivo foi atualizado para remover os listeners de eventos dos botões obsoletos
-// ("Exportar Dados", "Importar Dados", "Limpar Dados"). As importações de funções não utilizadas
-// do 'data-manager.js' também foram removidas para alinhar o código com a nova interface.
+// ARQUIVO: main.js (Versão Completa e Corrigida para Importação)
 
 /**
  * PONTO DE ENTRADA PRINCIPAL DA APLICAÇÃO (main.js)
@@ -16,23 +13,32 @@
 // ETAPA 1: As importações DEVEM estar no topo do arquivo, no escopo global.
 import { setupAuthListeners, handleLogout } from './auth.js';
 import { setupGeradorEscala } from './schedule-generator.js';
-import {
-    carregarDados,
-    salvarDados,
-    adicionarMembro,
-    adicionarRestricao,
-    adicionarRestricaoPermanente,
-    membros // Importa o array de membros para validação
-} from './data-manager.js';
+import { carregarDados, salvarDados, membros, restricoes, restricoesPermanentes } from './data-manager.js';
 import {
     showTab,
     toggleConjuge,
     atualizarTodasAsListas,
     setupUiListeners,
-    showToast,
     exportarEscalaXLSX,
-    renderDisponibilidadeGeral
+    renderDisponibilidadeGeral,
+    // Funções de UI necessárias para a nova funcionalidade de importação
+    renderEscalaEmCards,
+    configurarDragAndDrop,
+    exibirIndiceEquilibrio,
+    showToast
 } from './ui.js';
+import { setupSavedSchedulesListeners } from './saved-schedules-manager.js';
+import {
+    handleCadastroSubmit,
+    handleRestricaoSubmit,
+    handleRestricaoPermanenteSubmit,
+    excluirMembro,
+    excluirRestricao,
+    excluirRestricaoPermanente,
+    abrirModalSuspensao,
+    salvarSuspensao,
+    fecharModalSuspensao
+} from './member-actions.js';
 
 
 // ETAPA 2: O código que interage com a página é envolvido pelo listener DOMContentLoaded.
@@ -66,6 +72,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * Disponibiliza funções dos módulos no escopo global (window) para que
+     * possam ser chamadas pelos atributos `onclick` no HTML.
+     */
+    function exposeFunctionsToGlobalScope() {
+        window.excluirMembro = (index) => excluirMembro(index, auth, database);
+        window.excluirRestricao = (index) => excluirRestricao(index, auth, database);
+        window.excluirRestricaoPermanente = (index) => excluirRestricaoPermanente(index, auth, database);
+        window.abrirModalSuspensao = abrirModalSuspensao;
+    }
+
+    /**
      * Configura todos os event listeners da aplicação que não são
      * configurados dentro de outros módulos.
      */
@@ -84,69 +101,122 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Listeners dos Botões de Ação Globais ---
         document.getElementById('btn-exportar-xlsx').addEventListener('click', exportarEscalaXLSX);
-
-        // --- Listeners dos botões de import/export/limpar dados foram removidos ---
-
         document.getElementById('logout').addEventListener('click', () => handleLogout(auth));
 
-        // --- Listeners de Submissão de Formulários ---
+        // --- Listeners do Modal de Suspensão ---
+        document.getElementById('btn-salvar-suspensao').addEventListener('click', () => salvarSuspensao(auth, database));
+        document.getElementById('btn-cancelar-suspensao').addEventListener('click', fecharModalSuspensao);
+
+        // --- Listeners de Submissão de Formulários (Refatorados) ---
         document.getElementById('formCadastro').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const nome = document.getElementById('nome').value;
-            const genero = document.getElementById('genero').value;
-            const conjugeParticipa = document.getElementById('conjugeParticipa').checked;
-            const nomeConjuge = conjugeParticipa ? document.getElementById('nomeConjuge').value : null;
-
-            if (nomeConjuge && !membros.some(m => m.nome === nomeConjuge)) {
-                alert('O cônjuge deve estar cadastrado como membro!');
-                return;
-            }
-
-            adicionarMembro({
-                nome,
-                genero,
-                conjuge: nomeConjuge,
-                suspensao: { cultos: false, sabado: false, whatsapp: false }
-            });
-            
-            salvarDados(auth, database).then(atualizarTodasAsListas);
-            e.target.reset();
-            toggleConjuge();
+            handleCadastroSubmit(e, auth, database);
         });
 
         document.getElementById('formRestricao').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const membro = document.getElementById('membroRestricao').value;
-            const dataInicioStr = document.getElementById('dataInicio').value;
-            const dataFimStr = document.getElementById('dataFim').value;
-            const inicio = new Date(dataInicioStr + 'T12:00:00');
-            const fim = new Date(dataFimStr + 'T12:00:00');
-
-            if (!membro) { alert('Selecione um membro!'); return; }
-            if (fim < inicio) { alert('A data de fim deve ser posterior à data de início!'); return; }
-
-            adicionarRestricao({ membro, inicio: inicio.toISOString(), fim: fim.toISOString() });
-            
-            salvarDados(auth, database).then(atualizarTodasAsListas);
-            e.target.reset();
+            handleRestricaoSubmit(e, auth, database);
         });
 
         document.getElementById('formRestricaoPermanente').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const membro = document.getElementById('membroRestricaoPermanente').value;
-            const diaSemana = document.getElementById('diaSemana').value;
-            if (!membro) { alert('Selecione um membro!'); return; }
-
-            adicionarRestricaoPermanente({ membro, diaSemana });
-
-            salvarDados(auth, database).then(atualizarTodasAsListas);
-            e.target.reset();
+            handleRestricaoPermanenteSubmit(e, auth, database);
         });
+
+        // =====================================================================================
+        // === INÍCIO DO CÓDIGO ADICIONADO: Lógica de Importação de Planilha (XLSX) ===
+        // =====================================================================================
+        const btnImportar = document.getElementById('btn-importar-xlsx');
+        const inputImportar = document.getElementById('input-importar-xlsx');
+
+        if (btnImportar) {
+            btnImportar.addEventListener('click', () => {
+                inputImportar.click(); // Aciona o input de arquivo escondido
+            });
+        }
+
+        if (inputImportar) {
+            inputImportar.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                        // Transforma os dados da planilha para a estrutura interna da aplicação
+                        const diasTransformados = jsonData.map((row, index) => {
+                            if (!row.Data || !row.Turno) return null;
+
+                            const [day, month, year] = row.Data.split('/');
+                            const dataObj = new Date(year, month - 1, day);
+
+                            const selecionados = [];
+                            let i = 1;
+                            while (row[`Membro ${i}`]) {
+                                const nomeMembro = row[`Membro ${i}`].trim();
+                                const membroObj = membros.find(m => m.nome === nomeMembro);
+                                if (membroObj) {
+                                    selecionados.push(membroObj);
+                                }
+                                i++;
+                            }
+                            
+                            return {
+                                id: `importado-${index}`,
+                                data: dataObj,
+                                tipo: row.Turno,
+                                selecionados: selecionados
+                            };
+                        }).filter(dia => dia !== null && !isNaN(dia.data.getTime()));
+
+                        if (diasTransformados.length === 0) {
+                            showToast('A planilha está vazia ou em formato incorreto.', 'error');
+                            return;
+                        }
+
+                        const justificationDataRecalculado = {};
+                        membros.forEach(m => {
+                            justificationDataRecalculado[m.nome] = { participations: 0 };
+                        });
+                        diasTransformados.forEach(dia => {
+                            dia.selecionados.forEach(membro => {
+                                if (justificationDataRecalculado[membro.nome]) {
+                                    justificationDataRecalculado[membro.nome].participations++;
+                                }
+                            });
+                        });
+                        
+                        renderEscalaEmCards(diasTransformados);
+                        configurarDragAndDrop(diasTransformados, justificationDataRecalculado, restricoes, restricoesPermanentes);
+                        exibirIndiceEquilibrio(justificationDataRecalculado);
+
+                        showToast('Escala importada com sucesso!', 'success');
+                        document.getElementById('resultadoEscala').scrollIntoView({ behavior: 'smooth' });
+
+                    } catch (error) {
+                        console.error("Erro ao importar a planilha:", error);
+                        showToast('Ocorreu um erro ao ler o arquivo. Verifique o formato.', 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                
+                event.target.value = '';
+            });
+        }
+        // ===================================================================================
+        // === FIM DO CÓDIGO ADICIONADO ===
+        // ===================================================================================
+
     }
 
     // --- INICIALIZAÇÃO DA APLICAÇÃO ---
     setupAuthListeners(auth, onLoginSuccess);
     setupGeradorEscala();
-    setupUiListeners(); 
-    setupEventListeners(); 
+    setupUiListeners();
+    setupEventListeners();
+    setupSavedSchedulesListeners(auth, database);
+    exposeFunctionsToGlobalScope();
 });

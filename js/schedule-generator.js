@@ -3,7 +3,6 @@
 import { membros, restricoes, restricoesPermanentes } from './data-manager.js';
 import { exibirIndiceEquilibrio, renderEscalaEmCards, renderAnaliseConcentracao, renderizarFiltros, configurarDragAndDrop } from './ui.js';
 import { checkMemberAvailability, saoCompativeis } from './availability.js';
-import { calculateParticipationData } from './utils.js'; // <-- MUDANÇA: Importando a função de utilitário.
 
 function weightedRandom(weights) {
     let random = Math.random();
@@ -18,9 +17,8 @@ function weightedRandom(weights) {
 function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessaria, participacoes) {
     if (membrosDisponiveis.length < quantidadeNecessaria) return [];
 
-    // MUDANÇA: Lógica de peso agora usa a contagem do objeto de participação unificado.
     const pesos = membrosDisponiveis.map(m => {
-        const count = participacoes[m.nome]?.total || 0;
+        const count = participacoes[m.nome]?.participations || 0;
         return Math.pow(0.5, count);
     });
 
@@ -118,8 +116,11 @@ export function setupGeradorEscala() {
         const quantidadeCultos = parseInt(document.getElementById('quantidadeCultos').value);
         const mes = parseInt(document.getElementById('mesEscala').value);
         const ano = parseInt(document.getElementById('anoEscala').value);
-        
-        // MUDANÇA: A inicialização da contagem de participação é removida daqui.
+
+        const justificationData = {};
+        membros.forEach(m => {
+            justificationData[m.nome] = { participations: 0 };
+        });
 
         const dias = [];
         const inicio = new Date(ano, mes, 1);
@@ -141,9 +142,6 @@ export function setupGeradorEscala() {
             if (gerarOração) dias.push({ ...diaInfoBase, tipo: 'Oração no WhatsApp' });
         }
 
-        // MUDANÇA: A lógica de seleção agora depende de uma contagem externa temporária, que será recalculada.
-        let tempParticipationData = calculateParticipationData([], membros); // Inicia com contagem zerada.
-
         dias.forEach(dia => {
             const membrosDisponiveis = membros.filter(m => {
                 const status = checkMemberAvailability(m, dia.tipo, dia.data);
@@ -155,14 +153,17 @@ export function setupGeradorEscala() {
             if (membrosDisponiveis.length >= qtdNecessaria) {
                 let selecionados = [];
                 if (qtdNecessaria === 1) {
-                    selecionados = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, tempParticipationData);
+                    selecionados = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, justificationData);
                 } else {
-                    const primeiro = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, tempParticipationData)[0];
+                    const primeiro = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, justificationData)[0];
                     if (primeiro) {
                         const poolParaSegundo = membrosDisponiveis.filter(m => m.nome !== primeiro.nome);
+                        
+                        // LÓGICA ATUALIZADA: USA A FUNÇÃO HELPER saoCompativeis
                         const membrosCompatíveis = poolParaSegundo.filter(m => saoCompativeis(m, primeiro));
+                        
                         const poolFinal = membrosCompatíveis.length > 0 ? membrosCompatíveis : poolParaSegundo;
-                        const segundo = selecionarMembrosComAleatoriedade(poolFinal, 1, tempParticipationData)[0];
+                        const segundo = selecionarMembrosComAleatoriedade(poolFinal, 1, justificationData)[0];
                         
                         if (segundo) selecionados = [primeiro, segundo];
                     }
@@ -170,14 +171,10 @@ export function setupGeradorEscala() {
 
                 if (selecionados.length === qtdNecessaria) {
                     dia.selecionados = selecionados;
-                    // Atualiza a contagem temporária para a próxima iteração do loop.
-                    selecionados.forEach(m => { tempParticipationData[m.nome].total++; });
+                    selecionados.forEach(m => { justificationData[m.nome].participations++; });
                 }
             }
         });
-        
-        // MUDANÇA: A contagem de participação final e oficial é calculada aqui, de forma centralizada.
-        const justificationData = calculateParticipationData(dias, membros);
 
         renderEscalaEmCards(dias);
         renderizarFiltros(dias, analisarConcentracao(dias));

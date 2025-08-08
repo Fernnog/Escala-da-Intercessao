@@ -174,19 +174,6 @@ export function toggleConjuge() {
 
 export function setupUiListeners() {
     document.getElementById('conjugeParticipa').addEventListener('change', toggleConjuge);
-    // *** CORREÇÃO: Adicionar listener para o novo modal de validação ***
-    document.body.addEventListener('click', (e) => {
-        if (e.target.matches('#btn-confirmar-validacao, #btn-ignorar-validacao, #btn-cancelar-importacao')) {
-            e.preventDefault();
-            const action = e.target.dataset.action;
-            const select = document.getElementById('validationMemberSelect');
-            const selectedName = select ? select.value : null;
-            if (window.validationModalResolver) {
-                window.validationModalResolver({ action, name: selectedName });
-                closeNameValidationModal();
-            }
-        }
-    });
 }
 
 export function showToast(message, type = 'success') {
@@ -273,9 +260,8 @@ function _analisarConcentracao(diasGerados) {
 export function renderAnaliseConcentracao(filtro = 'all') {
     const container = document.getElementById('diagnosticReportContainer');
     if (!container) return;
-    
-    // Pequena refatoração para evitar chamar a análise duas vezes
-    const analiseCompleta = _analisarConcentracao(escalaAtual);
+
+    const analise = _analisarConcentracao(escalaAtual);
     let contentHTML = '';
 
     if (filtro === 'all') {
@@ -337,11 +323,12 @@ export function renderAnaliseConcentracao(filtro = 'all') {
             </div>`;
 
     } else {
+        // Lógica para filtros específicos
         const turnosParaRenderizar = [filtro];
         contentHTML = turnosParaRenderizar
-            .filter(turno => analiseCompleta[turno])
+            .filter(turno => analise[turno])
             .map(turno => {
-                const dados = analiseCompleta[turno];
+                const dados = analise[turno];
                 const listaMembrosHtml = dados.membrosDoTurno.map(membro => {
                     const statusConfig = VISUAL_CONFIG.status[membro.status.type];
                     const statusIcon = getStatusIconHTML(statusConfig);
@@ -383,6 +370,11 @@ export function renderEscalaEmCards(dias) {
     });
 }
 
+/**
+ * [NOVA FUNÇÃO ADICIONADA]
+ * Calcula e exibe o índice de equilíbrio da escala com base nas participações.
+ * @param {object} justificationData - Objeto com as contagens de participação de cada membro.
+ */
 export function exibirIndiceEquilibrio(justificationData) {
     const container = document.getElementById('balanceIndexContainer');
     if (!container) return;
@@ -403,6 +395,8 @@ export function exibirIndiceEquilibrio(justificationData) {
     const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
     const stdDev = Math.sqrt(variance);
 
+    // Converte o desvio padrão em um percentual de equilíbrio.
+    // Quanto menor o desvio, mais perto de 100%.
     let balancePercentage = Math.max(0, 100 - (stdDev / mean) * 100);
     balancePercentage = Math.min(100, balancePercentage);
 
@@ -630,75 +624,5 @@ export function configurarDragAndDrop(dias, justificationData, restricoes, restr
             
             remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId);
         });
-    });
-}
-
-
-// =========================================================================
-// === *** CORREÇÃO: SEÇÃO ADICIONADA PARA O MODAL DE VALIDAÇÃO *** ===
-// =========================================================================
-
-// Função para fechar o modal. Adicionada e exportada.
-export function closeNameValidationModal() {
-    const modal = document.getElementById('nameValidationModal');
-    if (modal) {
-        modal.remove();
-    }
-    window.validationModalResolver = null; // Limpa o resolver da promessa
-}
-
-// Função para abrir o modal. Adicionada e exportada.
-export function openNameValidationModal(unknownName, suggestion, legacyCallback) {
-    // Para manter a compatibilidade com a versão assíncrona, usamos Promessas
-    return new Promise((resolve) => {
-        // Remove qualquer modal antigo
-        closeNameValidationModal();
-
-        // Armazena a função `resolve` para ser chamada quando o usuário interagir
-        window.validationModalResolver = resolve;
-
-        // Cria as opções do select
-        const memberOptions = membros
-            .map(m => `<option value="${m.nome}" ${m.nome === suggestion ? 'selected' : ''}>${m.nome}</option>`)
-            .join('');
-
-        // Cria o HTML do modal
-        const modalHTML = `
-            <div id="nameValidationModal" class="modal-overlay" style="display: flex;">
-                <div class="modal-content">
-                    <h3>Validação de Nome</h3>
-                    <p>O nome "<strong>${unknownName}</strong>" da planilha não foi encontrado.</p>
-                    <p>${suggestion ? `Você quis dizer <strong>${suggestion}</strong>?` : 'Nenhuma sugestão próxima foi encontrada.'}</p>
-                    
-                    <div class="input-group">
-                        <select id="validationMemberSelect">
-                            <option value="">-- Selecione um membro para substituir --</option>
-                            ${memberOptions}
-                        </select>
-                        <label for="validationMemberSelect">Corrigir para:</label>
-                    </div>
-
-                    <div class="modal-actions">
-                        <button id="btn-confirmar-validacao" class="secondary-button" data-action="confirm">Confirmar Correção</button>
-                        <button id="btn-ignorar-validacao" data-action="ignore">Ignorar este Membro</button>
-                        <button id="btn-cancelar-importacao" data-action="cancel">Cancelar Importação</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-
-        // Lógica de callback legada (se fornecida)
-        if (legacyCallback) {
-            const resolverWrapper = (decision) => {
-                if (decision.action === 'confirm') {
-                    legacyCallback(decision.name);
-                } else {
-                    legacyCallback(null); // Ignorar ou cancelar resulta em nulo
-                }
-            };
-            window.validationModalResolver = resolverWrapper;
-        }
     });
 }

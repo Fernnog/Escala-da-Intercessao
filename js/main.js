@@ -3,7 +3,6 @@
 import { setupAuthListeners, handleLogout } from './auth.js';
 import { setupGeradorEscala } from './schedule-generator.js';
 import { carregarDados, salvarDados } from './data-manager.js';
-// *** CORREÇÃO ESSENCIAL APLICADA AQUI: O item 'ModalManager', que não existe, foi removido da importação abaixo. ***
 import {
     showTab,
     toggleConjuge,

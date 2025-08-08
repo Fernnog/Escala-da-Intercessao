@@ -2,6 +2,7 @@
 
 import { membros, restricoes, restricoesPermanentes, escalasSalvas } from './data-manager.js';
 import { saoCompativeis } from './availability.js';
+import { calculateParticipationData } from './utils.js'; // <-- MUDANÇA: Importando a função de utilitário.
 
 // =========================================================
 // === SEÇÃO DE CONFIGURAÇÃO E ESTADO ===
@@ -35,7 +36,7 @@ export let escalaAtual = [];
 let justificationDataAtual = {};
 let todasAsRestricoes = [];
 let todasAsRestricoesPerm = [];
-
+let currentValidationCallback = null; // <-- MUDANÇA: Para o modal de validação de nomes.
 
 // =========================================================
 // === SEÇÃO DE FUNÇÕES DE ATUALIZAÇÃO DA UI ===
@@ -174,6 +175,27 @@ export function toggleConjuge() {
 
 export function setupUiListeners() {
     document.getElementById('conjugeParticipa').addEventListener('change', toggleConjuge);
+    
+    // MUDANÇA: Listeners para o novo modal de validação de nomes.
+    const modalValidacao = document.getElementById('nameValidationModal');
+    if(modalValidacao) {
+        document.getElementById('btnConfirmName').addEventListener('click', () => {
+            if(currentValidationCallback) currentValidationCallback('confirm');
+            closeNameValidationModal();
+        });
+        document.getElementById('btnIgnoreName').addEventListener('click', () => {
+            if(currentValidationCallback) currentValidationCallback('ignore');
+            closeNameValidationModal();
+        });
+        document.getElementById('btnIgnoreAllNames').addEventListener('click', () => {
+            if(currentValidationCallback) currentValidationCallback('ignore-all');
+            closeNameValidationModal();
+        });
+        document.getElementById('btnCancelImport').addEventListener('click', () => {
+            if(currentValidationCallback) currentValidationCallback('cancel');
+            closeNameValidationModal();
+        });
+    }
 }
 
 export function showToast(message, type = 'success') {
@@ -208,10 +230,9 @@ export function exportarEscalaXLSX() {
     XLSX.writeFile(wb, 'escala_gerada.xlsx');
 }
 
-
-// =========================================================================
+// =========================================================
 // === SEÇÃO DE FUNÇÕES DE RENDERIZAÇÃO DA ESCALA E ANÁLISE ===
-// =========================================================================
+// =========================================================
 
 function _analisarConcentracao(diasGerados) {
     const analise = {};
@@ -261,26 +282,13 @@ export function renderAnaliseConcentracao(filtro = 'all') {
     const container = document.getElementById('diagnosticReportContainer');
     if (!container) return;
 
+    // MUDANÇA: A contagem de participação é refeita aqui para garantir consistência.
+    const participationData = calculateParticipationData(escalaAtual, membros);
     const analise = _analisarConcentracao(escalaAtual);
     let contentHTML = '';
 
     if (filtro === 'all') {
-        const participacoesGlobais = {};
-        membros.forEach(m => {
-            participacoesGlobais[m.nome] = { total: 0 };
-        });
-
-        escalaAtual.forEach(dia => {
-            dia.selecionados.forEach(membro => {
-                const nomeMembro = membro.nome;
-                if (participacoesGlobais[nomeMembro]) {
-                    participacoesGlobais[nomeMembro].total++;
-                    participacoesGlobais[nomeMembro][dia.tipo] = (participacoesGlobais[nomeMembro][dia.tipo] || 0) + 1;
-                }
-            });
-        });
-
-        const listaMembrosHtml = Object.entries(participacoesGlobais)
+        const listaMembrosHtml = Object.entries(participationData)
             .sort(([, a], [, b]) => b.total - a.total)
             .map(([nome, dados]) => {
                 let maxTurnoCount = 0;
@@ -323,7 +331,6 @@ export function renderAnaliseConcentracao(filtro = 'all') {
             </div>`;
 
     } else {
-        // Lógica para filtros específicos
         const turnosParaRenderizar = [filtro];
         contentHTML = turnosParaRenderizar
             .filter(turno => analise[turno])
@@ -370,16 +377,11 @@ export function renderEscalaEmCards(dias) {
     });
 }
 
-/**
- * [NOVA FUNÇÃO ADICIONADA]
- * Calcula e exibe o índice de equilíbrio da escala com base nas participações.
- * @param {object} justificationData - Objeto com as contagens de participação de cada membro.
- */
 export function exibirIndiceEquilibrio(justificationData) {
     const container = document.getElementById('balanceIndexContainer');
     if (!container) return;
 
-    const counts = Object.values(justificationData).map(d => d.participations);
+    const counts = Object.values(justificationData).map(d => d.total);
     if (counts.length === 0) {
         container.style.display = 'none';
         return;
@@ -395,8 +397,6 @@ export function exibirIndiceEquilibrio(justificationData) {
     const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
     const stdDev = Math.sqrt(variance);
 
-    // Converte o desvio padrão em um percentual de equilíbrio.
-    // Quanto menor o desvio, mais perto de 100%.
     let balancePercentage = Math.max(0, 100 - (stdDev / mean) * 100);
     balancePercentage = Math.min(100, balancePercentage);
 
@@ -565,12 +565,8 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
 
     diaAlvo.selecionados.splice(indexAlvoDestino, 1, membroArrastadoObj);
 
-    if (justificationDataAtual[nomeAlvo]) {
-        justificationDataAtual[nomeAlvo].participations--;
-    }
-    if (justificationDataAtual[nomeArrastado]) {
-        justificationDataAtual[nomeArrastado].participations++;
-    }
+    // MUDANÇA: Recalcula a participação do zero para garantir consistência.
+    justificationDataAtual = calculateParticipationData(escalaAtual, membros);
 
     renderEscalaEmCards(escalaAtual);
     exibirIndiceEquilibrio(justificationDataAtual);
@@ -625,4 +621,42 @@ export function configurarDragAndDrop(dias, justificationData, restricoes, restr
             remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId);
         });
     });
+}
+
+// MUDANÇA: Novas funções para gerenciar o modal de validação de nomes.
+/**
+ * Abre o modal para o usuário validar um nome não encontrado.
+ * @param {string} invalidName - O nome da planilha que não foi encontrado.
+ * @param {string} suggestedName - A sugestão de nome mais próxima do cadastro.
+ * @param {function} callback - Função a ser chamada com a decisão do usuário ('confirm', 'ignore', 'ignore-all', 'cancel').
+ */
+export function openNameValidationModal(invalidName, suggestedName, callback) {
+    const modal = document.getElementById('nameValidationModal');
+    if (!modal) return;
+    
+    currentValidationCallback = callback;
+
+    document.getElementById('invalidNameSpan').textContent = invalidName;
+    const suggestionSpan = document.getElementById('suggestedNameSpan');
+    const confirmButton = document.getElementById('btnConfirmName');
+
+    if (suggestedName) {
+        suggestionSpan.textContent = suggestedName;
+        confirmButton.disabled = false;
+        confirmButton.style.opacity = 1;
+    } else {
+        suggestionSpan.textContent = 'Nenhuma sugestão encontrada';
+        confirmButton.disabled = true;
+        confirmButton.style.opacity = 0.5;
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeNameValidationModal() {
+    const modal = document.getElementById('nameValidationModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    currentValidationCallback = null;
 }

@@ -27,11 +27,12 @@ A aplicação é dividida em módulos que cobrem todo o ciclo de vida da gestão
 ### Interatividade, Análise e Compartilhamento
 - **Edição da Escala com Drag & Drop:** Após a geração, a escala pode ser ajustada manualmente. Arraste um membro de um card para outro para realizar trocas. O sistema valida a troca em tempo real, impedindo movimentos que violem as restrições do membro.
 - **Painel de Disponibilidade Geral:** Uma visão completa que mostra, para cada turno, o status de todos os membros (Disponível, Suspenso, Restrição Permanente), ajudando no planejamento estratégico.
-- **Análise de Concentração:** Um relatório detalhado que mostra, por turno, a quantidade de participações de cada membro, quantos estão disponíveis e o motivo da indisponibilidade dos demais.
+- **Análise de Concentração:** Um relatório detalhado que mostra, por turno e de forma global, a quantidade de participações de cada membro, quantos estão disponíveis e o motivo da indisponibilidade dos demais.
 - **Índice de Equilíbrio:** Um medidor visual que calcula e exibe um percentual de quão equilibrada a escala gerada está, ajudando a identificar rapidamente qualquer desbalanceamento.
-- **Exportação e Importação de Dados:**
-  - **JSON:** Exporte e importe todos os dados da aplicação (membros, restrições, suspensões) para backup ou migração.
-  - **XLSX:** Exporte a escala finalizada em um arquivo Excel limpo e organizado, com cada membro em sua própria coluna para facilitar o compartilhamento e a manipulação dos dados.
+- **Gerenciamento de Escalas Salvas:** Salve múltiplas versões da escala gerada na nuvem. Você pode nomear, carregar, renomear ou excluir qualquer escala salva, permitindo fácil acesso e comparação entre diferentes cenários.
+- **Importação e Exportação de Escala (XLSX):**
+  - **Exportar:** Exporte a escala finalizada em um arquivo Excel limpo e organizado, com cada membro em sua própria coluna para facilitar o compartilhamento.
+  - **Importar:** Carregue uma escala a partir de uma planilha XLSX pré-existente. O sistema irá ler o arquivo e renderizar a escala na tela, pronta para visualização e edição.
 
 ---
 
@@ -60,7 +61,6 @@ Quando a escala exige duplas, o sistema aplica uma lógica preferencial para for
 Para escolher quem será escalado dentre os "disponíveis", o sistema utiliza algoritmos para promover a justiça e a rotação.
 
 - **⚖️ Sistema de Pesos:** A chance de um membro ser escalado é **inversamente proporcional** ao número de vezes que ele já participou na escala atual. Na prática, isso significa que **membros com menos participações têm prioridade máxima** para serem selecionados.
-- **🔄 Distanciamento Mínimo (Oração no WhatsApp):** Para a escala diária de Oração no WhatsApp, uma regra adicional é aplicada: um membro que foi escalado não pode ser selecionado novamente nos próximos **3 dias**, garantindo uma rotação mais eficaz e evitando sobrecarga.
 
 ---
 

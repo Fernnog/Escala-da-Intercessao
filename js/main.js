@@ -1,31 +1,15 @@
-// ARQUIVO: main.js (Versão Completa e Corrigida para Importação)
+// ARQUIVO: main.js (Versão Final e Estável)
 
-/**
- * PONTO DE ENTRADA PRINCIPAL DA APLICAÇÃO (main.js)
- * Responsabilidades:
- * 1. Importar todos os outros módulos.
- * 2. Esperar o carregamento da página (DOMContentLoaded).
- * 3. Inicializar o Firebase.
- * 4. Configurar todos os event listeners (cliques em botões, submissão de formulários).
- * 5. Orquestrar as chamadas entre os diferentes módulos (auth, data, ui, etc.).
- */
-
-// ETAPA 1: As importações DEVEM estar no topo do arquivo, no escopo global.
 import { setupAuthListeners, handleLogout } from './auth.js';
 import { setupGeradorEscala } from './schedule-generator.js';
-import { carregarDados, salvarDados, membros, restricoes, restricoesPermanentes } from './data-manager.js';
+import { carregarDados, salvarDados } from './data-manager.js';
 import {
     showTab,
     toggleConjuge,
     atualizarTodasAsListas,
     setupUiListeners,
     exportarEscalaXLSX,
-    renderDisponibilidadeGeral,
-    // Funções de UI necessárias para a nova funcionalidade de importação
-    renderEscalaEmCards,
-    configurarDragAndDrop,
-    exibirIndiceEquilibrio,
-    showToast
+    renderDisponibilidadeGeral
 } from './ui.js';
 import { setupSavedSchedulesListeners } from './saved-schedules-manager.js';
 import {
@@ -39,9 +23,10 @@ import {
     salvarSuspensao,
     fecharModalSuspensao
 } from './member-actions.js';
+// Importa a nova função do arquivo isolado
+import { setupXLSXImporter } from './file-importer.js';
 
 
-// ETAPA 2: O código que interage com a página é envolvido pelo listener DOMContentLoaded.
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- INICIALIZAÇÃO DO FIREBASE ---
@@ -60,21 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const database = firebase.database();
 
     // --- FUNÇÕES DE ORQUESTRAÇÃO ---
-
-    /**
-     * Função chamada após um login bem-sucedido.
-     * Carrega os dados do usuário e atualiza toda a interface.
-     */
     function onLoginSuccess() {
         carregarDados(auth, database, () => {
             atualizarTodasAsListas();
         });
     }
 
-    /**
-     * Disponibiliza funções dos módulos no escopo global (window) para que
-     * possam ser chamadas pelos atributos `onclick` no HTML.
-     */
     function exposeFunctionsToGlobalScope() {
         window.excluirMembro = (index) => excluirMembro(index, auth, database);
         window.excluirRestricao = (index) => excluirRestricao(index, auth, database);
@@ -82,10 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.abrirModalSuspensao = abrirModalSuspensao;
     }
 
-    /**
-     * Configura todos os event listeners da aplicação que não são
-     * configurados dentro de outros módulos.
-     */
     function setupEventListeners() {
         
         // --- Listeners da Barra de Navegação ---
@@ -119,97 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('formRestricaoPermanente').addEventListener('submit', (e) => {
             handleRestricaoPermanenteSubmit(e, auth, database);
         });
-
-        // =====================================================================================
-        // === INÍCIO DO CÓDIGO ADICIONADO: Lógica de Importação de Planilha (XLSX) ===
-        // =====================================================================================
-        const btnImportar = document.getElementById('btn-importar-xlsx');
-        const inputImportar = document.getElementById('input-importar-xlsx');
-
-        if (btnImportar) {
-            btnImportar.addEventListener('click', () => {
-                inputImportar.click(); // Aciona o input de arquivo escondido
-            });
-        }
-
-        if (inputImportar) {
-            inputImportar.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const firstSheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[firstSheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-                        // Transforma os dados da planilha para a estrutura interna da aplicação
-                        const diasTransformados = jsonData.map((row, index) => {
-                            if (!row.Data || !row.Turno) return null;
-
-                            const [day, month, year] = row.Data.split('/');
-                            const dataObj = new Date(year, month - 1, day);
-
-                            const selecionados = [];
-                            let i = 1;
-                            while (row[`Membro ${i}`]) {
-                                const nomeMembro = row[`Membro ${i}`].trim();
-                                const membroObj = membros.find(m => m.nome === nomeMembro);
-                                if (membroObj) {
-                                    selecionados.push(membroObj);
-                                }
-                                i++;
-                            }
-                            
-                            return {
-                                id: `importado-${index}`,
-                                data: dataObj,
-                                tipo: row.Turno,
-                                selecionados: selecionados
-                            };
-                        }).filter(dia => dia !== null && !isNaN(dia.data.getTime()));
-
-                        if (diasTransformados.length === 0) {
-                            showToast('A planilha está vazia ou em formato incorreto.', 'error');
-                            return;
-                        }
-
-                        const justificationDataRecalculado = {};
-                        membros.forEach(m => {
-                            justificationDataRecalculado[m.nome] = { participations: 0 };
-                        });
-                        diasTransformados.forEach(dia => {
-                            dia.selecionados.forEach(membro => {
-                                if (justificationDataRecalculado[membro.nome]) {
-                                    justificationDataRecalculado[membro.nome].participations++;
-                                }
-                            });
-                        });
-                        
-                        renderEscalaEmCards(diasTransformados);
-                        configurarDragAndDrop(diasTransformados, justificationDataRecalculado, restricoes, restricoesPermanentes);
-                        exibirIndiceEquilibrio(justificationDataRecalculado);
-
-                        showToast('Escala importada com sucesso!', 'success');
-                        document.getElementById('resultadoEscala').scrollIntoView({ behavior: 'smooth' });
-
-                    } catch (error) {
-                        console.error("Erro ao importar a planilha:", error);
-                        showToast('Ocorreu um erro ao ler o arquivo. Verifique o formato.', 'error');
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-                
-                event.target.value = '';
-            });
-        }
-        // ===================================================================================
-        // === FIM DO CÓDIGO ADICIONADO ===
-        // ===================================================================================
-
     }
 
     // --- INICIALIZAÇÃO DA APLICAÇÃO ---
@@ -219,4 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     setupSavedSchedulesListeners(auth, database);
     exposeFunctionsToGlobalScope();
+    // Ativa o novo importador de planilhas
+    setupXLSXImporter(); 
 });

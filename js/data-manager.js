@@ -1,11 +1,10 @@
-// ARQUIVO: data-manager.js (Versão Completa)
-// DESCRIÇÃO: As funções 'limparDadosGlobais', 'exportarDados' e 'importarDados' foram removidas,
-// pois se tornaram obsoletas com a integração direta com o Firebase.
+// ARQUIVO: data-manager.js (Versão Corrigida e Robusta)
 
 // --- ESTADO DA APLICAÇÃO ---
 export let membros = [];
 export let restricoes = [];
 export let restricoesPermanentes = [];
+export let escalasSalvas = [];
 
 // --- FUNÇÕES DE MANIPULAÇÃO DO ESTADO LOCAL (CRUD) ---
 
@@ -33,6 +32,24 @@ export function excluirRestricaoPermanente(index) {
     restricoesPermanentes.splice(index, 1);
 }
 
+export function adicionarEscalaSalva(escala) {
+    escalasSalvas.push(escala);
+}
+
+export function excluirEscalaSalva(escalaId) {
+    const index = escalasSalvas.findIndex(e => e.id === escalaId);
+    if (index > -1) {
+        escalasSalvas.splice(index, 1);
+    }
+}
+
+export function atualizarNomeEscalaSalva(escalaId, novoNome) {
+    const escala = escalasSalvas.find(e => e.id === escalaId);
+    if (escala) {
+        escala.nome = novoNome;
+    }
+}
+
 // --- FUNÇÕES DE PERSISTÊNCIA DE DADOS (Firebase e Exportação) ---
 
 export function salvarDados(auth, database) {
@@ -42,7 +59,8 @@ export function salvarDados(auth, database) {
     return database.ref('users/' + uid).set({
         membros: membros,
         restricoes: restricoes,
-        restricoesPermanentes: restricoesPermanentes
+        restricoesPermanentes: restricoesPermanentes,
+        escalasSalvas: escalasSalvas
     });
 }
 
@@ -52,27 +70,66 @@ export function carregarDados(auth, database, onDataLoaded) {
     const uid = user.uid;
     database.ref('users/' + uid).once('value')
         .then((snapshot) => {
+            // Limpa os arrays de estado ANTES de preenchê-los.
+            membros.length = 0;
+            restricoes.length = 0;
+            restricoesPermanentes.length = 0;
+            escalasSalvas.length = 0;
+
             if (snapshot.exists()) {
                 const dados = snapshot.val();
-                membros = (dados.membros || []).map(m => {
+                
+                // Processa e preenche MEMBROS
+                const membrosProcessados = (dados.membros || []).map(m => {
                     if (typeof m.suspensao !== 'object' || m.suspensao === null) {
                         const isSuspendedOld = !!m.suspenso;
                         m.suspensao = { cultos: isSuspendedOld, sabado: isSuspendedOld, whatsapp: isSuspendedOld };
                     }
                     return m;
                 });
-                restricoes = dados.restricoes || [];
-                restricoesPermanentes = dados.restricoesPermanentes || [];
-            } else {
-                // Se não há dados, zera as variáveis locais para evitar persistência de estado anterior
-                membros = [];
-                restricoes = [];
-                restricoesPermanentes = [];
+                membrosProcessados.forEach(membro => membros.push(membro));
+
+                // Processa e preenche RESTRIÇÕES
+                const restricoesProcessadas = dados.restricoes || [];
+                restricoesProcessadas.forEach(restricao => restricoes.push(restricao));
+
+                // Processa e preenche RESTRIÇÕES PERMANENTES
+                const restricoesPermProcessadas = dados.restricoesPermanentes || [];
+                restricoesPermProcessadas.forEach(restricao => restricoesPermanentes.push(restricao));
+                
+                // =================================================================================
+                // === INÍCIO DA CORREÇÃO DEFINITIVA: Processamento robusto de escalas salvas ===
+                // =================================================================================
+                const escalasSalvasDoBanco = dados.escalasSalvas || [];
+                
+                const escalasProcessadas = escalasSalvasDoBanco.map(escala => {
+                    if (escala.dias && Array.isArray(escala.dias)) {
+                        // Mapeia os dias e converte a string de data para um objeto Date.
+                        // Em seguida, filtra para garantir que apenas dias com data válida permaneçam.
+                        const diasValidos = escala.dias
+                            .map(dia => {
+                                // A data vinda do Firebase é uma string, converte para objeto Date
+                                const dataConvertida = new Date(dia.data); 
+                                return { ...dia, data: dataConvertida };
+                            })
+                            .filter(dia => dia.data && !isNaN(dia.data.getTime())); // Checa se a data é válida
+
+                        return { ...escala, dias: diasValidos };
+                    }
+                    // Se a escala não tiver dias, retorna como está (ou vazia para segurança)
+                    return { ...escala, dias: [] }; 
+                });
+                
+                escalasProcessadas.forEach(escala => escalasSalvas.push(escala));
+                // ===============================================================================
+                // === FIM DA CORREÇÃO DEFINITIVA ===
+                // ===============================================================================
             }
-            onDataLoaded(); // Callback para notificar que os dados foram carregados
+            
+            onDataLoaded();
         })
         .catch((error) => {
             console.error('Erro ao carregar dados: ', error);
-            onDataLoaded(); // Chama o callback mesmo em caso de erro para a UI não ficar travada
+            onDataLoaded();
         });
 }

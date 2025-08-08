@@ -1,22 +1,8 @@
+// ARQUIVO: schedule-generator.js 
+
 import { membros, restricoes, restricoesPermanentes } from './data-manager.js';
 import { exibirIndiceEquilibrio, renderEscalaEmCards, renderAnaliseConcentracao, renderizarFiltros, configurarDragAndDrop } from './ui.js';
-import { checkMemberAvailability } from './availability.js';
-
-/**
- * NOVA FUNÇÃO HELPER: Verifica se dois membros são compatíveis para formar uma dupla.
- * A compatibilidade ocorre se forem do mesmo gênero ou se forem cônjuges.
- * @param {object} membroA - O primeiro membro.
- * @param {object} membroB - O segundo membro.
- * @returns {boolean} - Retorna true se forem compatíveis, false caso contrário.
- */
-export function saoCompativeis(membroA, membroB) {
-    if (!membroA || !membroB) return false; // Checagem de segurança
-    return (
-        membroA.genero === membroB.genero ||
-        membroA.conjuge === membroB.nome ||
-        membroB.conjuge === membroA.nome
-    );
-}
+import { checkMemberAvailability, saoCompativeis } from './availability.js';
 
 function weightedRandom(weights) {
     let random = Math.random();
@@ -196,8 +182,7 @@ export function setupGeradorEscala() {
         exibirIndiceEquilibrio(justificationData);
         
         if (gerarCultos) {
-            const relatorioConcentracao = analisarConcentracao(dias);
-            renderAnaliseConcentracao(relatorioConcentracao, 'all'); 
+            renderAnaliseConcentracao('all'); 
             
             if (balanceContainer) {
                 balanceContainer.onclick = () => {

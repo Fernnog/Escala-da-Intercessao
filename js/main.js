@@ -1,16 +1,5 @@
 // ARQUIVO: main.js (Versão Final e Estável)
 
-/**
- * PONTO DE ENTRADA PRINCIPAL DA APLICAÇÃO (main.js)
- * Responsabilidades:
- * 1. Importar todos os outros módulos.
- * 2. Esperar o carregamento da página (DOMContentLoaded).
- * 3. Inicializar o Firebase.
- * 4. Configurar todos os event listeners (cliques em botões, submissão de formulários).
- * 5. Orquestrar as chamadas entre os diferentes módulos (auth, data, ui, etc.).
- */
-
-// ETAPA 1: As importações DEVEM estar no topo do arquivo, no escopo global.
 import { setupAuthListeners, handleLogout } from './auth.js';
 import { setupGeradorEscala } from './schedule-generator.js';
 import { carregarDados, salvarDados } from './data-manager.js';
@@ -38,7 +27,6 @@ import {
 import { setupXLSXImporter } from './file-importer.js';
 
 
-// ETAPA 2: O código que interage com a página é envolvido pelo listener DOMContentLoaded.
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- INICIALIZAÇÃO DO FIREBASE ---
@@ -57,21 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const database = firebase.database();
 
     // --- FUNÇÕES DE ORQUESTRAÇÃO ---
-
-    /**
-     * Função chamada após um login bem-sucedido.
-     * Carrega os dados do usuário e atualiza toda a interface.
-     */
     function onLoginSuccess() {
         carregarDados(auth, database, () => {
             atualizarTodasAsListas();
         });
     }
 
-    /**
-     * Disponibiliza funções dos módulos no escopo global (window) para que
-     * possam ser chamadas pelos atributos `onclick` no HTML.
-     */
     function exposeFunctionsToGlobalScope() {
         window.excluirMembro = (index) => excluirMembro(index, auth, database);
         window.excluirRestricao = (index) => excluirRestricao(index, auth, database);
@@ -79,10 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.abrirModalSuspensao = abrirModalSuspensao;
     }
 
-    /**
-     * Configura todos os event listeners da aplicação que não são
-     * configurados dentro de outros módulos.
-     */
     function setupEventListeners() {
         
         // --- Listeners da Barra de Navegação ---
@@ -125,7 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     setupSavedSchedulesListeners(auth, database);
     exposeFunctionsToGlobalScope();
-    
-    // Ativa o novo importador de planilhas a partir de seu módulo isolado
+    // Ativa o novo importador de planilhas
     setupXLSXImporter(); 
 });

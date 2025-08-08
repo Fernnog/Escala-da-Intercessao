@@ -30,80 +30,15 @@ function getStatusIconHTML(statusConfig) {
     return `<i class="fas ${statusConfig.value} status-icon ${statusConfig.classe}" title="${statusConfig.titulo}"></i>`;
 }
 
+// Armazenamento de estado para manipulação da UI
 export let escalaAtual = [];
 let justificationDataAtual = {};
 let todasAsRestricoes = [];
 let todasAsRestricoesPerm = [];
 
 
-// =========================================================================
-// === NOVA SEÇÃO: GERENCIADOR DE MODAIS (ModalManager) ===
-// =========================================================================
-
-export const ModalManager = {
-    open: function(modalName, options = {}) {
-        this.close(); // Garante que nenhum outro modal esteja aberto
-
-        let modalElement;
-        switch (modalName) {
-            case 'suspensao':
-                modalElement = document.getElementById('suspensaoModal');
-                const membro = membros[options.index];
-                if (membro) {
-                    document.getElementById('membroIndexSuspensao').value = options.index;
-                    document.getElementById('modalTitle').textContent = `Gerenciar Suspensão: ${membro.nome}`;
-                    document.getElementById('suspenderCultos').checked = membro.suspensao.cultos;
-                    document.getElementById('suspenderSabado').checked = membro.suspensao.sabado;
-                    document.getElementById('suspenderWhatsapp').checked = membro.suspensao.whatsapp;
-                }
-                break;
-            
-            case 'escalaAction':
-                modalElement = document.getElementById('escalaActionModal');
-                const title = document.getElementById('escalaModalTitle');
-                const body = document.getElementById('escalaModalBody');
-                document.getElementById('escalaModalAction').value = options.action;
-                document.getElementById('escalaModalId').value = options.escalaId;
-
-                if (options.action === 'save' || options.action === 'rename') {
-                    title.textContent = options.action === 'save' ? 'Salvar Escala' : 'Renomear Escala';
-                    const defaultName = (options.action === 'save')
-                        ? `Escala de ${new Date().toLocaleDateString('pt-BR')}`
-                        : options.escalaNome;
-                    body.innerHTML = `
-                        <div class="input-group">
-                            <input type="text" id="escalaModalInputName" value="${defaultName}" required placeholder=" ">
-                            <label for="escalaModalInputName">Nome da Escala</label>
-                        </div>`;
-                } else if (options.action === 'delete') {
-                    title.textContent = 'Confirmar Exclusão';
-                    body.innerHTML = `<p>Você tem certeza que deseja excluir a escala "<strong>${options.escalaNome}</strong>"? Esta ação não pode ser desfeita.</p>`;
-                }
-                break;
-
-            case 'analiseConcentracao':
-                 modalElement = document.getElementById('analiseConcentracaoModal');
-                 // Lógica de preenchimento do corpo do modal, se houver, iria aqui.
-                 break;
-        }
-
-        if (modalElement) {
-            modalElement.style.display = 'flex';
-        }
-    },
-
-    close: function() {
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.style.display = 'none';
-        });
-    }
-};
-
-// As funções individuais `abrirModal...` e `fecharModal...` foram removidas e sua lógica
-// foi absorvida pelo ModalManager. Isso centraliza o controle e resolve o erro de exportação.
-
 // =========================================================
-// === SEÇÃO DE FUNÇÕES DE ATUALIZAÇÃO DA UI (Inalterado) ===
+// === SEÇÃO DE FUNÇÕES DE ATUALIZAÇÃO DA UI ===
 // =========================================================
 
 function atualizarListaMembros() {
@@ -202,6 +137,32 @@ export function atualizarTodasAsListas() {
     atualizarListaEscalasSalvas();
 }
 
+// *** CORREÇÃO APLICADA AQUI ***
+export function abrirModalAcaoEscala(action, escalaId = null, escalaNome = '') {
+    const modal = document.getElementById('escalaActionModal');
+    const title = document.getElementById('escalaModalTitle');
+    const body = document.getElementById('escalaModalBody');
+    document.getElementById('escalaModalAction').value = action;
+    document.getElementById('escalaModalId').value = escalaId;
+
+    if (action === 'save' || action === 'rename') {
+        title.textContent = action === 'save' ? 'Salvar Escala' : 'Renomear Escala';
+        const defaultName = (action === 'save')
+            ? `Escala de ${new Date().toLocaleDateString('pt-BR')}`
+            : escalaNome;
+        body.innerHTML = `
+            <div class="input-group">
+                <input type="text" id="escalaModalInputName" value="${defaultName}" required placeholder=" ">
+                <label for="escalaModalInputName">Nome da Escala</label>
+            </div>`;
+    } else if (action === 'delete') {
+        title.textContent = 'Confirmar Exclusão';
+        body.innerHTML = `<p>Você tem certeza que deseja excluir a escala "<strong>${escalaNome}</strong>"? Esta ação não pode ser desfeita.</p>`;
+    }
+
+    modal.style.display = 'flex';
+}
+
 export function showTab(tabId) {
     document.querySelectorAll('.tab').forEach(tab => tab.style.display = 'none');
     document.getElementById(tabId).style.display = 'block';
@@ -248,11 +209,9 @@ export function exportarEscalaXLSX() {
     XLSX.writeFile(wb, 'escala_gerada.xlsx');
 }
 
-/* O restante do arquivo (renderização de escala, análise, drag & drop, etc.) permanece inalterado */
-// ... (código existente de renderAnaliseConcentracao, renderEscalaEmCards, etc., continua aqui) ...
 
 // =========================================================================
-// === SEÇÃO DE FUNÇÕES DE RENDERIZAÇÃO DA ESCALA E ANÁLISE (Inalterado) ===
+// === SEÇÃO DE FUNÇÕES DE RENDERIZAÇÃO DA ESCALA E ANÁLISE ===
 // =========================================================================
 
 function _analisarConcentracao(diasGerados) {
@@ -365,6 +324,7 @@ export function renderAnaliseConcentracao(filtro = 'all') {
             </div>`;
 
     } else {
+        // Lógica para filtros específicos
         const turnosParaRenderizar = [filtro];
         contentHTML = turnosParaRenderizar
             .filter(turno => analise[turno])
@@ -411,6 +371,11 @@ export function renderEscalaEmCards(dias) {
     });
 }
 
+/**
+ * [NOVA FUNÇÃO ADICIONADA]
+ * Calcula e exibe o índice de equilíbrio da escala com base nas participações.
+ * @param {object} justificationData - Objeto com as contagens de participação de cada membro.
+ */
 export function exibirIndiceEquilibrio(justificationData) {
     const container = document.getElementById('balanceIndexContainer');
     if (!container) return;
@@ -431,6 +396,8 @@ export function exibirIndiceEquilibrio(justificationData) {
     const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
     const stdDev = Math.sqrt(variance);
 
+    // Converte o desvio padrão em um percentual de equilíbrio.
+    // Quanto menor o desvio, mais perto de 100%.
     let balancePercentage = Math.max(0, 100 - (stdDev / mean) * 100);
     balancePercentage = Math.min(100, balancePercentage);
 
@@ -555,6 +522,10 @@ export function renderDisponibilidadeGeral() {
     container.innerHTML = contentHTML;
 }
 
+// =========================================================================
+// === SEÇÃO DE DRAG & DROP ===
+// =========================================================================
+
 function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
     const diaAlvo = escalaAtual.find(d => d.id === cardAlvoId);
     if (!diaAlvo) return;
@@ -611,6 +582,7 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
 
     showToast(`${nomeArrastado} foi adicionado(a) à escala, substituindo ${nomeAlvo}.`, 'success');
 }
+
 
 export function configurarDragAndDrop(dias, justificationData, restricoes, restricoesPermanentes) {
     escalaAtual = dias;

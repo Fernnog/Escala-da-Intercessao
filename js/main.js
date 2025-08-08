@@ -2,9 +2,9 @@
 
 import { setupAuthListeners, handleLogout } from './auth.js';
 import { setupGeradorEscala } from './schedule-generator.js';
-import { carregarDados } from './data-manager.js';
+import { carregarDados, salvarDados } from './data-manager.js';
+// *** CORREÇÃO ESSENCIAL APLICADA AQUI: O item 'ModalManager', que não existe, foi removido da importação abaixo. ***
 import {
-    ModalManager, // <-- Importa o novo gerenciador
     showTab,
     toggleConjuge,
     atualizarTodasAsListas,
@@ -20,8 +20,11 @@ import {
     excluirMembro,
     excluirRestricao,
     excluirRestricaoPermanente,
-    salvarSuspensao
+    abrirModalSuspensao,
+    salvarSuspensao,
+    fecharModalSuspensao
 } from './member-actions.js';
+// Importa a nova função do arquivo isolado
 import { setupXLSXImporter } from './file-importer.js';
 
 
@@ -50,18 +53,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function exposeFunctionsToGlobalScope() {
-        // Adaptação para o novo ModalManager, mantendo a compatibilidade com o HTML
-        window.abrirModalSuspensao = (index) => ModalManager.open('suspensao', { index });
-        
-        // Funções de exclusão permanecem como antes
         window.excluirMembro = (index) => excluirMembro(index, auth, database);
         window.excluirRestricao = (index) => excluirRestricao(index, auth, database);
         window.excluirRestricaoPermanente = (index) => excluirRestricaoPermanente(index, auth, database);
+        window.abrirModalSuspensao = abrirModalSuspensao;
     }
 
     function setupEventListeners() {
         
-        // --- Listener da Barra de Navegação ---
+        // --- Listeners da Barra de Navegação ---
         document.getElementById('nav-auth').addEventListener('click', () => showTab('auth'));
         document.getElementById('nav-cadastro').addEventListener('click', () => showTab('cadastro'));
         document.getElementById('nav-disponibilidade').addEventListener('click', () => {
@@ -76,12 +76,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-exportar-xlsx').addEventListener('click', exportarEscalaXLSX);
         document.getElementById('logout').addEventListener('click', () => handleLogout(auth));
 
-        // --- Listeners dos Modais (usando o ModalManager) ---
+        // --- Listeners do Modal de Suspensão ---
         document.getElementById('btn-salvar-suspensao').addEventListener('click', () => salvarSuspensao(auth, database));
-        // Todos os botões "Cancelar" ou "Fechar" agora chamam o método genérico `close`
-        document.getElementById('btn-cancelar-suspensao').addEventListener('click', () => ModalManager.close());
-        document.getElementById('btn-fechar-analise').addEventListener('click', () => ModalManager.close());
-        
+        document.getElementById('btn-cancelar-suspensao').addEventListener('click', fecharModalSuspensao);
+
         // --- Listeners de Submissão de Formulários (Refatorados) ---
         document.getElementById('formCadastro').addEventListener('submit', (e) => {
             handleCadastroSubmit(e, auth, database);
@@ -94,13 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('formRestricaoPermanente').addEventListener('submit', (e) => {
             handleRestricaoPermanenteSubmit(e, auth, database);
         });
-
-        // === NOVO: Listener global para a tecla 'Escape' ===
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                ModalManager.close(); // Fecha qualquer modal aberto
-            }
-        });
     }
 
     // --- INICIALIZAÇÃO DA APLICAÇÃO ---
@@ -110,5 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     setupSavedSchedulesListeners(auth, database);
     exposeFunctionsToGlobalScope();
+    // Ativa o novo importador de planilhas
     setupXLSXImporter(); 
 });

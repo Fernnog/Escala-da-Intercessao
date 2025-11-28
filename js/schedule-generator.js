@@ -1,8 +1,14 @@
-// ARQUIVO: schedule-generator.js 
+// ARQUIVO: schedule-generator.js
 
 import { membros, restricoes, restricoesPermanentes } from './data-manager.js';
-import { exibirIndiceEquilibrio, renderEscalaEmCards, renderAnaliseConcentracao, renderizarFiltros, configurarDragAndDrop } from './ui.js';
+import { exibirIndiceEquilibrio, renderEscalaEmCards, renderAnaliseConcentracao, renderizarFiltros, configurarDragAndDrop, aplicarFeedbackFadiga } from './ui.js';
 import { checkMemberAvailability, saoCompativeis } from './availability.js';
+
+// Configurações Globais do Gerador
+const CONFIG_GERADOR = {
+    LIMITE_DISCREPANCIA: 2, // Diferença máxima permitida entre quem tem mais e quem tem menos
+    TURNOS_CULTO: ['Quarta', 'Domingo Manhã', 'Domingo Noite'] // Turnos que contam para fadiga
+};
 
 function weightedRandom(weights) {
     let random = Math.random();
@@ -15,8 +21,9 @@ function weightedRandom(weights) {
 }
 
 function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessaria, participacoes) {
-    if (membrosDisponiveis.length < quantidadeNecessaria) return [];
+    if (membrosDisponiveis.length === 0) return [];
 
+    // Sistema de pesos inverso: quanto mais participações, menor a chance
     const pesos = membrosDisponiveis.map(m => {
         const count = participacoes[m.nome]?.participations || 0;
         return Math.pow(0.5, count);
@@ -24,6 +31,7 @@ function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessa
 
     const somaPesos = pesos.reduce((sum, p) => sum + p, 0);
     
+    // Se pesos zerados ou muito baixos, fallback para random simples
     if (somaPesos === 0) {
         const selecionados = [];
         const disponiveis = [...membrosDisponiveis];
@@ -35,7 +43,6 @@ function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessa
     }
 
     const pesosNormalizados = pesos.map(p => p / somaPesos);
-
     const selecionados = [];
     const disponiveis = [...membrosDisponiveis];
     let pesosTemp = [...pesosNormalizados];
@@ -44,8 +51,8 @@ function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessa
         const indiceSorteado = weightedRandom(pesosTemp);
         const membroSelecionado = disponiveis.splice(indiceSorteado, 1)[0];
         
+        // Remove peso usado e re-normaliza
         pesosTemp.splice(indiceSorteado, 1);
-        
         const somaPesosTemp = pesosTemp.reduce((sum, p) => sum + p, 0);
         if (somaPesosTemp > 0) {
             pesosTemp = pesosTemp.map(p => p / somaPesosTemp);
@@ -57,27 +64,19 @@ function selecionarMembrosComAleatoriedade(membrosDisponiveis, quantidadeNecessa
 }
 
 function analisarConcentracao(diasGerados) {
+    // Função auxiliar mantida para compatibilidade com UI
     const analise = {};
-    const turnosCulto = ['Quarta', 'Domingo Manhã', 'Domingo Noite'];
-
-    turnosCulto.forEach(turno => {
+    CONFIG_GERADOR.TURNOS_CULTO.forEach(turno => {
         const membrosDoTurno = [];
         let totalParticipacoesNoTurno = 0;
         let membrosDisponiveisCount = 0;
 
         membros.forEach(membro => {
             const status = checkMemberAvailability(membro, turno, null);
-
             if (status.type === 'disponivel') {
                 membrosDisponiveisCount++;
             }
-
-            // ATUALIZADO: Ignora nulos/vagas ao contar participações
-            const participacoes = diasGerados.filter(d => 
-                d.tipo === turno && 
-                d.selecionados.some(s => s && s.nome === membro.nome && !s.isVaga)
-            ).length;
-            
+            const participacoes = diasGerados.filter(d => d.tipo === turno && d.selecionados.some(s => s.nome === membro.nome)).length;
             totalParticipacoesNoTurno += participacoes;
 
             membrosDoTurno.push({
@@ -100,19 +99,27 @@ export function setupGeradorEscala() {
     document.getElementById('formEscala').addEventListener('submit', (e) => {
         e.preventDefault();
 
+        // Limpeza da UI
         const resultadoContainer = document.getElementById('resultadoEscala');
         const balanceContainer = document.getElementById('balanceIndexContainer');
         const filtrosContainer = document.getElementById('escala-filtros');
         const diagnosticContainer = document.getElementById('diagnosticReportContainer');
 
-        resultadoContainer.innerHTML = '';
-        resultadoContainer.classList.remove('escala-container');
-        filtrosContainer.innerHTML = '';
-        diagnosticContainer.innerHTML = '';
-        diagnosticContainer.style.display = 'none';
-        balanceContainer.style.display = 'none';
-        balanceContainer.onclick = null;
+        if(resultadoContainer) {
+            resultadoContainer.innerHTML = '';
+            resultadoContainer.classList.remove('escala-container');
+        }
+        if(filtrosContainer) filtrosContainer.innerHTML = '';
+        if(diagnosticContainer) {
+            diagnosticContainer.innerHTML = '';
+            diagnosticContainer.style.display = 'none';
+        }
+        if(balanceContainer) {
+            balanceContainer.style.display = 'none';
+            balanceContainer.onclick = null;
+        }
 
+        // Parâmetros do Form
         const tipoEscalaSelecionado = document.querySelector('input[name="tipoEscala"]:checked').value;
         const gerarCultos = tipoEscalaSelecionado === 'cultos';
         const gerarSabado = tipoEscalaSelecionado === 'sabado';
@@ -121,15 +128,14 @@ export function setupGeradorEscala() {
         const quantidadeCultos = parseInt(document.getElementById('quantidadeCultos').value);
         const mes = parseInt(document.getElementById('mesEscala').value);
         const ano = parseInt(document.getElementById('anoEscala').value);
-        
-        // Configuração de limite de discrepância
-        const LIMITE_DISCREPANCIA = 2; 
 
+        // Inicializa contadores
         const justificationData = {};
         membros.forEach(m => {
             justificationData[m.nome] = { participations: 0 };
         });
 
+        // 1. Cria a estrutura dos dias (Skeleton)
         const dias = [];
         const inicio = new Date(ano, mes, 1);
         const fim = new Date(ano, mes + 1, 0);
@@ -150,82 +156,100 @@ export function setupGeradorEscala() {
             if (gerarOração) dias.push({ ...diaInfoBase, tipo: 'Oração no WhatsApp' });
         }
 
-        dias.forEach(dia => {
-            // 1. Filtro Inicial: Disponibilidade (Suspensões e Restrições)
-            const membrosDisponiveis = membros.filter(m => {
+        // 2. Processamento Sequencial (Dia a Dia)
+        dias.forEach((dia, indexDiaAtual) => {
+            
+            // A. Filtro Base: Disponibilidade (Suspensões, Férias, Regras Permanentes)
+            let membrosPool = membros.filter(m => {
                 const status = checkMemberAvailability(m, dia.tipo, dia.data);
                 return status.type === 'disponivel';
             });
+
+            // B. Filtro de Discrepância (Equilíbrio)
+            // Calcula o mínimo de participações atual no grupo
+            const minParticipacoesGlobal = Math.min(...Object.values(justificationData).map(d => d.participations));
             
-            // 2. Filtro de Justiça: Limite de Discrepância
-            // Encontra o mínimo de participações atual entre todos os membros
-            const minParticipacoes = Math.min(...Object.values(justificationData).map(d => d.participations));
-            
-            // Filtra mantendo apenas quem não estourou o limite em relação ao mínimo
-            const membrosElegiveis = membrosDisponiveis.filter(m => {
-                const parts = justificationData[m.nome].participations;
-                return (parts - minParticipacoes) <= LIMITE_DISCREPANCIA;
+            membrosPool = membrosPool.filter(m => {
+                const partsAtuais = justificationData[m.nome].participations;
+                // Só mantém quem não estourou a diferença permitida em relação ao mínimo
+                return (partsAtuais - minParticipacoesGlobal) <= CONFIG_GERADOR.LIMITE_DISCREPANCIA;
             });
 
+            // C. Filtro de Fadiga (Olhar para trás - i-1, i-2)
+            // Lógica: Se o membro esteve nos 2 últimos turnos de culto, bloqueia neste.
+            if (CONFIG_GERADOR.TURNOS_CULTO.includes(dia.tipo)) {
+                // Recupera apenas os dias anteriores que também são cultos
+                const historicoCultos = dias
+                    .slice(0, indexDiaAtual) // Pega dias anteriores ao atual
+                    .filter(d => CONFIG_GERADOR.TURNOS_CULTO.includes(d.tipo)); // Apenas cultos
+
+                if (historicoCultos.length >= 2) {
+                    const ultimoCulto = historicoCultos[historicoCultos.length - 1];
+                    const penultimoCulto = historicoCultos[historicoCultos.length - 2];
+
+                    membrosPool = membrosPool.filter(m => {
+                        const estavaUltimo = ultimoCulto.selecionados.some(s => s.nome === m.nome);
+                        const estavaPenultimo = penultimoCulto.selecionados.some(s => s.nome === m.nome);
+
+                        // Se estava nos dois anteriores, remove do pool (bloqueio de sequência de 3)
+                        if (estavaUltimo && estavaPenultimo) {
+                            return false; 
+                        }
+                        return true;
+                    });
+                }
+            }
+
+            // D. Seleção Final
             const qtdNecessaria = (dia.tipo === 'Oração no WhatsApp' || dia.tipo === 'Sábado') ? 1 : quantidadeCultos;
-            
             let selecionados = [];
 
-            // 3. Tentativa de Seleção com Membros Elegíveis
-            if (membrosElegiveis.length >= qtdNecessaria) {
+            // Se temos gente suficiente após todos os filtros
+            if (membrosPool.length >= qtdNecessaria) {
                 if (qtdNecessaria === 1) {
-                    selecionados = selecionarMembrosComAleatoriedade(membrosElegiveis, 1, justificationData);
+                    selecionados = selecionarMembrosComAleatoriedade(membrosPool, 1, justificationData);
                 } else {
-                    const primeiro = selecionarMembrosComAleatoriedade(membrosElegiveis, 1, justificationData)[0];
+                    // Lógica de Duplas (Compatibilidade)
+                    const primeiro = selecionarMembrosComAleatoriedade(membrosPool, 1, justificationData)[0];
                     if (primeiro) {
-                        const poolParaSegundo = membrosElegiveis.filter(m => m.nome !== primeiro.nome);
-                        
-                        // Busca compatibilidade estrita dentro do pool ELEGÍVEL
+                        const poolParaSegundo = membrosPool.filter(m => m.nome !== primeiro.nome);
                         const membrosCompativeis = poolParaSegundo.filter(m => saoCompativeis(m, primeiro));
                         
-                        // Se houver compatíveis elegíveis, usa-os. Caso contrário, não força (gera vaga vazia).
-                        if (membrosCompativeis.length > 0) {
-                            const segundo = selecionarMembrosComAleatoriedade(membrosCompativeis, 1, justificationData)[0];
-                            if (segundo) selecionados = [primeiro, segundo];
-                        } else {
-                            // Se não encontrou par compatível DENTRO das regras de discrepância, 
-                            // a decisão é: escala só um e deixa o outro buraco, ou escala dupla inválida?
-                            // Seguindo o pedido: respeitar regras. Então escala apenas o primeiro.
-                            selecionados = [primeiro];
-                        }
+                        const poolFinal = membrosCompativeis.length > 0 ? membrosCompativeis : poolParaSegundo;
+                        const segundo = selecionarMembrosComAleatoriedade(poolFinal, 1, justificationData)[0];
+                        
+                        if (segundo) selecionados = [primeiro, segundo];
                     }
                 }
             } else {
-                // Cenário: Não há membros ELEGÍVEIS suficientes (disponíveis + discrepância ok)
-                // Tenta aproveitar os que existem, o resto vira vaga vazia.
-                if (membrosElegiveis.length > 0) {
-                    selecionados = selecionarMembrosComAleatoriedade(membrosElegiveis, membrosElegiveis.length, justificationData);
+                // FALLBACK CRÍTICO: Não há membros suficientes respeitando as regras.
+                // Tenta preencher o que der, o resto vira Vaga em Aberto.
+                if (membrosPool.length > 0) {
+                    selecionados = selecionarMembrosComAleatoriedade(membrosPool, membrosPool.length, justificationData);
                 }
-                // Se membrosElegiveis for 0, selecionados continua vazio.
             }
 
-            // 4. Preenchimento com Vagas em Aberto (Buracos)
-            // Remove possíveis nulos e preenche até a quantidade necessária com marcador de Vaga
-            selecionados = selecionados.filter(s => s && s.nome);
-            
+            // Preenche buracos com Vagas em Aberto
             while (selecionados.length < qtdNecessaria) {
-                selecionados.push({ 
-                    nome: null, 
-                    isVaga: true, 
-                    genero: 'X' // Genero neutro para não quebrar ícones na UI antes da atualização
-                });
+                selecionados.push({ nome: null, isVaga: true, genero: null });
             }
 
-            // Atribui à escala e atualiza contagem (apenas para membros reais)
+            // Atribui e Atualiza Estatísticas
             dia.selecionados = selecionados;
             selecionados.forEach(m => { 
-                if (m.nome && !m.isVaga && !m.isConvidado) {
-                    justificationData[m.nome].participations++; 
-                }
+                if (m.nome) justificationData[m.nome].participations++; 
             });
         });
 
+        // 3. Renderização
         renderEscalaEmCards(dias);
+        
+        // Aplica o feedback visual de fadiga (laranja) caso alguma regra manual viole a lógica posteriormente
+        // ou se o gerador falhou em evitar (edge cases)
+        if (typeof aplicarFeedbackFadiga === 'function') {
+            aplicarFeedbackFadiga(dias); 
+        }
+
         renderizarFiltros(dias, analisarConcentracao(dias));
         configurarDragAndDrop(dias, justificationData, restricoes, restricoesPermanentes);
         exibirIndiceEquilibrio(justificationData);
@@ -234,6 +258,7 @@ export function setupGeradorEscala() {
             renderAnaliseConcentracao('all'); 
             
             if (balanceContainer) {
+                balanceContainer.style.display = 'block';
                 balanceContainer.onclick = () => {
                     const reportElement = document.getElementById('diagnosticReportContainer');
                     if (reportElement && reportElement.style.display !== 'none') {

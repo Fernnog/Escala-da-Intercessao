@@ -697,6 +697,9 @@ window.confirmarAdicaoExterno = function() {
         renderEscalaEmCards(escalaAtual);
         exibirIndiceEquilibrio(justificationDataAtual);
 
+        // ATUALIZA PAINEL LATERAL (Sincroniza os contadores)
+        if (diaSelecionadoId) window.atualizarPainelSuplentes(diaSelecionadoId);
+
         // RECONECTA EVENTOS DE DRAG & DROP APÓS ATUALIZAÇÃO
         configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
 
@@ -744,6 +747,9 @@ function _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, isFromSuple
     
     const filtroAtivo = document.querySelector('#escala-filtros button.active')?.dataset.filter || 'all';
     renderAnaliseConcentracao(filtroAtivo);
+
+    // ATUALIZA PAINEL LATERAL (Sincroniza os contadores)
+    if (diaSelecionadoId) window.atualizarPainelSuplentes(diaSelecionadoId);
 
     // RECONECTA EVENTOS DE DRAG & DROP APÓS ATUALIZAÇÃO DOM
     configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);

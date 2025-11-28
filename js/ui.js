@@ -634,10 +634,22 @@ window.atualizarPainelSuplentes = function(cardId) {
             const parts = justificationDataAtual[m.nome] ? justificationDataAtual[m.nome].participations : 0;
             const status = checkMemberAvailability(m, dia.tipo, dia.data);
             const isAvailable = status.type === 'disponivel';
-            const icon = isAvailable ? '<i class="fas fa-check" style="color:green"></i>' : '<i class="fas fa-exclamation" style="color:orange"></i>';
+            
+            // Definição visual do status na lista lateral
+            let icon = '<i class="fas fa-check-circle" style="color:#28a745"></i>';
+            let restricaoClass = '';
+            let title = 'Disponível';
+
+            if (!isAvailable) {
+                restricaoClass = 'com-restricao';
+                icon = '<i class="fas fa-exclamation-triangle" style="color:#ffc107"></i>'; // Warning Amarelo
+                if (status.type === 'suspenso') title = 'Suspenso';
+                else if (status.type === 'permanente') title = 'Restrição Permanente';
+                else if (status.type === 'temporaria') title = 'Restrição Temporária (Férias)';
+            }
             
             return `
-                <li draggable="true" class="suplente-item" data-nome="${m.nome}">
+                <li draggable="true" class="suplente-item ${restricaoClass}" data-nome="${m.nome}" title="${title}">
                     <span>${icon} ${m.nome}</span>
                     <span class="suplente-badge ${parts <= 1 ? 'low-part' : ''}">${parts}x</span>
                 </li>
@@ -785,23 +797,17 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, sour
     }
 
     if (erros.length > 0) {
-        // ABRIR MODAL FORCE OVERRIDE
-        document.getElementById('msgRestricaoForce').innerHTML = `
-            O membro <strong>${nomeArrastado}</strong> tem impedimentos:<br>
-            <ul style="text-align:left; margin-top:10px;">${erros.map(e => `<li>${e}</li>`).join('')}</ul>`;
+        // LÓGICA ATUALIZADA (Prioridade 1): Executa a troca MESMO com erros, mas avisa.
         
-        const btnSim = document.getElementById('btn-force-sim');
-        
-        // Remove listeners antigos para evitar múltiplas execuções
-        const novoBtnSim = btnSim.cloneNode(true);
-        btnSim.parentNode.replaceChild(novoBtnSim, btnSim);
-        
-        novoBtnSim.addEventListener('click', () => {
-             _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, sourceType === 'suplente');
-             document.getElementById('modalConfirmacaoForce').style.display = 'none';
-        });
+        // 1. Executa a troca
+        _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, sourceType === 'suplente');
 
-        document.getElementById('modalConfirmacaoForce').style.display = 'flex';
+        // 2. Monta mensagem amigável de alerta
+        const msgErro = erros.join(', ');
+        
+        // 3. Exibe alerta amarelo (Warning) em vez de bloquear
+        showToast(`Troca realizada com alerta: ${msgErro}`, 'warning');
+        
         return;
     }
 

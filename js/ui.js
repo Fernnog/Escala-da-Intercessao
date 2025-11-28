@@ -787,3 +787,35 @@ export function setupUiListeners() {
     const chkConjuge = document.getElementById('conjugeParticipa');
     if(chkConjuge) chkConjuge.addEventListener('change', toggleConjuge);
 }
+
+export function aplicarFeedbackFadiga(dias) {
+    // Filtra apenas turnos de culto para análise cronológica
+    const cultos = dias.filter(d => ['Quarta', 'Domingo Manhã', 'Domingo Noite'].includes(d.tipo));
+    
+    // Começa do índice 2, pois precisa de 2 anteriores para comparar
+    for (let i = 2; i < cultos.length; i++) {
+        const atual = cultos[i];
+        const anterior = cultos[i-1];
+        const antepenultimo = cultos[i-2];
+
+        atual.selecionados.forEach(membro => {
+            if (!membro.nome || membro.isVaga || membro.isConvidado) return;
+
+            const estavaAnt = anterior.selecionados.some(m => m.nome === membro.nome);
+            const estavaAntepen = antepenultimo.selecionados.some(m => m.nome === membro.nome);
+
+            if (estavaAnt && estavaAntepen) {
+                // Seleciona o elemento visual específico
+                const cardDiaEl = document.querySelector(`.escala-card[data-id="${atual.id}"]`);
+                if (cardDiaEl) {
+                    // Atenção ao seletor: aspas duplas no atributo data-nome para evitar erro com espaços
+                    const membroEl = cardDiaEl.querySelector(`.membro-card[data-nome="${membro.nome}"]`);
+                    if (membroEl) {
+                        membroEl.classList.add('fadiga-alert');
+                        membroEl.title = "Alerta: 3º turno consecutivo!"; // Tooltip nativo simples
+                    }
+                }
+            }
+        });
+    }
+}

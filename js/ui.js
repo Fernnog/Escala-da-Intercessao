@@ -23,17 +23,18 @@ const VISUAL_CONFIG = {
     }
 };
 
-// Armazenamento de estado para manipulação da UI
+// Armazenamento de estado global da UI
 export let escalaAtual = [];
 let justificationDataAtual = {};
 let todasAsRestricoes = [];
 let todasAsRestricoesPerm = [];
-let diaSelecionadoNoPainelId = null; // Para o Painel Inteligente
+let diaSelecionadoNoPainelId = null; // Controle do Painel Lateral
 
 // Helper para verificar se é turno de culto (para fadiga)
 const isTurnoCulto = (tipo) => ['Quarta', 'Domingo Manhã', 'Domingo Noite'].includes(tipo);
 
 function getStatusIconHTML(statusConfig) {
+    if (!statusConfig) return '';
     if (statusConfig.type === 'emoji') {
         return `<span class="status-icon status-emoji ${statusConfig.classe}" title="${statusConfig.titulo}">${statusConfig.value}</span>`;
     }
@@ -41,7 +42,7 @@ function getStatusIconHTML(statusConfig) {
 }
 
 // =========================================================
-// === SEÇÃO DE ATUALIZAÇÃO BÁSICA DA UI (CRUD) ===
+// === SEÇÃO DE ATUALIZAÇÃO DE LISTAS (CRUD) ===
 // =========================================================
 
 function atualizarListaMembros() {
@@ -55,10 +56,12 @@ function atualizarListaMembros() {
     lista.innerHTML = membros.map((m, index) => {
         if (m.genero === 'M') maleCount++;
         else if (m.genero === 'F') femaleCount++;
+        
         const susp = m.suspensao;
         const isTotalmenteSuspenso = susp.cultos && susp.sabado && susp.whatsapp;
         const isParcialmenteSuspenso = !isTotalmenteSuspenso && (susp.cultos || susp.sabado || susp.whatsapp);
         let suspensaoTitle = '';
+        
         if (isParcialmenteSuspenso) {
             let suspensoDe = [];
             if(susp.cultos) suspensoDe.push('Cultos');
@@ -68,6 +71,7 @@ function atualizarListaMembros() {
         } else if (isTotalmenteSuspenso) {
             suspensaoTitle = 'Suspenso de todas as atividades.';
         }
+        
         const genderSymbol = m.genero === 'M' ? '♂️' : '♀️';
         return `
             <li class="${isTotalmenteSuspenso ? 'suspended-member' : ''}">
@@ -91,7 +95,6 @@ function atualizarListaMembros() {
     const elMale = document.getElementById('maleCount');
     const elFemale = document.getElementById('femaleCount');
     const elTotal = document.getElementById('totalCount');
-    
     if(elMale) elMale.textContent = maleCount;
     if(elFemale) elFemale.textContent = femaleCount;
     if(elTotal) elTotal.textContent = membros.length;
@@ -129,9 +132,7 @@ function atualizarListaRestricoesPermanentes() {
 function atualizarListaEscalasSalvas() {
     const lista = document.getElementById('listaEscalasSalvas');
     if (!lista) return;
-
     escalasSalvas.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
-    
     lista.innerHTML = escalasSalvas.map(escala => `
         <li data-id="${escala.id}">
             <span>${escala.nome}</span>
@@ -140,8 +141,7 @@ function atualizarListaEscalasSalvas() {
                 <button class="secondary-button" data-action="rename">Renomear</button>
                 <button data-action="delete">Excluir</button>
             </div>
-        </li>
-    `).join('');
+        </li>`).join('');
 }
 
 export function atualizarTodasAsListas() {
@@ -153,7 +153,7 @@ export function atualizarTodasAsListas() {
 }
 
 // =========================================================
-// === SEÇÃO DE PAINEL INTELIGENTE E VAGAS ===
+// === SEÇÃO DE PAINEL INTELIGENTE E VAGAS (NOVO) ===
 // =========================================================
 
 // Função chamada ao clicar em um Card da Escala
@@ -203,8 +203,9 @@ function renderizarListaSuplentes(dia, termoBusca) {
     lista.innerHTML = sugestoes.map(m => {
         const parts = justificationDataAtual[m.nome] ? justificationDataAtual[m.nome].participations : 0;
         const status = checkMemberAvailability(m, dia.tipo, dia.data);
+        // Exibe alerta visual se houver qualquer restrição, mas permite arrastar
         const alerta = status.type !== 'disponivel' ? '⚠️' : ''; 
-        const classeBadge = parts <= 1 ? 'low-part' : ''; // Destaque visual
+        const classeBadge = parts <= 1 ? 'low-part' : ''; // Destaque para quem trabalhou pouco
         
         return `
             <li draggable="true" class="suplente-item" data-nome="${m.nome}">
@@ -228,14 +229,13 @@ function setupDragParaSuplentes() {
     });
 }
 
-// Lógica de Vagas e Convidados
+// Lógica de Modal para Convidado
 window.abrirModalConvidado = function(diaId, indiceVaga) {
     const modal = document.getElementById('modalNomeExterno');
     document.getElementById('externoDiaId').value = diaId;
     document.getElementById('externoIndiceVaga').value = indiceVaga;
     document.getElementById('inputNomeExterno').value = '';
     
-    // Configura o botão confirmar
     const btnConfirm = document.getElementById('btn-confirmar-externo');
     btnConfirm.onclick = confirmAdicaoExterno;
     
@@ -264,10 +264,10 @@ function confirmAdicaoExterno() {
 }
 
 // =========================================================
-// === SEÇÃO DE RENDERIZAÇÃO DA ESCALA E FADIGA ===
+// === SEÇÃO DE RENDERIZAÇÃO DA ESCALA E FADIGA (NOVO) ===
 // =========================================================
 
-// Função para identificar e pintar visualmente o desgaste
+// Função para identificar e pintar visualmente o desgaste de 3 turnos
 function aplicarFeedbackFadiga(dias) {
     // Filtra cronologicamente apenas os turnos de culto (onde a fadiga conta)
     const cultos = dias.filter(d => d.data && isTurnoCulto(d.tipo))
@@ -281,6 +281,7 @@ function aplicarFeedbackFadiga(dias) {
 
         // Verifica cada membro escalado no dia atual
         atual.selecionados.forEach(membro => {
+            // Ignora vagas vazias ou convidados
             if (!membro.nome || membro.isVaga || membro.isConvidado) return;
 
             const estavaAnt = anterior.selecionados.some(m => m.nome === membro.nome);
@@ -293,7 +294,7 @@ function aplicarFeedbackFadiga(dias) {
                     const membroEl = cardDiaEl.querySelector(`.membro-card[data-nome="${membro.nome}"]`);
                     if (membroEl) {
                         membroEl.classList.add('fadiga-alert');
-                        membroEl.title = "Alerta: 3º turno consecutivo!"; // Tooltip nativo simples
+                        membroEl.title = "Alerta: 3º turno consecutivo!"; // Tooltip nativo
                     }
                 }
             }
@@ -313,7 +314,7 @@ export function renderEscalaEmCards(dias) {
     diasValidos.forEach(dia => {
         const turnoConfig = VISUAL_CONFIG.turnos[dia.tipo] || { cardClass: '' };
         
-        // Gera HTML dos membros
+        // Gera HTML dos membros (tratando Vagas e Convidados)
         const membrosHTML = dia.selecionados.map((m, idx) => {
             // Caso 1: Vaga em Aberto (Vermelho)
             if (m.isVaga || !m.nome) {
@@ -350,22 +351,22 @@ export function renderEscalaEmCards(dias) {
 }
 
 // =========================================================
-// === SEÇÃO DE DRAG & DROP COM VALIDAÇÃO (FORCE) ===
+// === SEÇÃO DE DRAG & DROP COM VALIDAÇÃO (FORCE) (NOVO) ===
 // =========================================================
 
-// Função que efetiva a troca após todas as validações (ou confirmação de force)
+// Função que efetiva a troca de dados e re-renderiza
 function executarTroca(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
     const diaAlvo = escalaAtual.find(d => d.id === cardAlvoId);
     
-    // Objeto Membro (ou cria um fake se não achar, ex: vindo do painel mas não carregado, raro)
+    // Recupera objeto completo do membro (ou cria stub se for painel)
     const membroArrastadoObj = membros.find(m => m.nome === nomeArrastado) || { nome: nomeArrastado, suspensao: {} };
     
-    // Remove do destino se for substituição
-    const indexAlvo = diaAlvo.selecionados.findIndex(m => (m.nome === nomeAlvo) || (m.isVaga && nomeAlvo === undefined)); // undefined se soltou no card vazio
+    // Identifica onde soltou
+    const indexAlvo = diaAlvo.selecionados.findIndex(m => (m.nome === nomeAlvo) || (m.isVaga && nomeAlvo === undefined));
     
     // Se soltou em cima de alguém ou de uma vaga específica
     if (indexAlvo !== -1) {
-        // Se a posição alvo era um membro real, decrementa estatística
+        // Se a posição alvo era um membro real, decrementa estatística dele (pois está saindo)
         const alvoAntigo = diaAlvo.selecionados[indexAlvo];
         if (alvoAntigo && alvoAntigo.nome && !alvoAntigo.isConvidado && !alvoAntigo.isVaga) {
              if (justificationDataAtual[alvoAntigo.nome]) justificationDataAtual[alvoAntigo.nome].participations--;
@@ -374,7 +375,7 @@ function executarTroca(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
         // Substitui
         diaAlvo.selecionados[indexAlvo] = membroArrastadoObj;
     } else {
-        // Fallback: Adiciona no fim se não achou índice (não deve ocorrer com a lógica atual)
+        // Fallback (apenas segurança)
         diaAlvo.selecionados.push(membroArrastadoObj);
     }
     
@@ -383,16 +384,16 @@ function executarTroca(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
         justificationDataAtual[nomeArrastado].participations++;
     }
 
-    // Se veio de outro card (não do painel), remove da origem (troca simples ou move)
+    // Se veio de outro card (não do painel), tem que tirar da origem
     if (cardOrigemId && cardOrigemId !== 'painel') {
         const diaOrigem = escalaAtual.find(d => d.id === cardOrigemId);
         if (diaOrigem) {
             const indexOrigem = diaOrigem.selecionados.findIndex(m => m.nome === nomeArrastado);
             if (indexOrigem !== -1) {
-                // Coloca o membro trocado (swap) ou deixa vaga? 
-                // Para simplificar: Vira Vaga na origem
+                // Origem vira Vaga
                 diaOrigem.selecionados[indexOrigem] = { nome: null, isVaga: true };
-                if (justificationDataAtual[nomeArrastado]) justificationDataAtual[nomeArrastado].participations--; // Decrementa pois saiu da origem (para não contar 2x)
+                // Decrementa pois saiu da origem (evita contagem dupla)
+                if (justificationDataAtual[nomeArrastado]) justificationDataAtual[nomeArrastado].participations--; 
             }
         }
     }
@@ -402,10 +403,11 @@ function executarTroca(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
     exibirIndiceEquilibrio(justificationDataAtual);
     configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
     
+    // Atualiza relatórios se abertos
     const filtroAtivo = document.querySelector('#escala-filtros button.active')?.dataset.filter || 'all';
     renderAnaliseConcentracao(filtroAtivo);
     
-    // Se o painel estava aberto, atualiza para refletir mudança
+    // Atualiza painel se estiver vendo esse dia
     if(diaSelecionadoNoPainelId) window.atualizarPainelSuplentes(diaSelecionadoNoPainelId);
 
     showToast(`${nomeArrastado} adicionado com sucesso.`, 'success');
@@ -415,13 +417,13 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
     const diaAlvo = escalaAtual.find(d => d.id === cardAlvoId);
     if (!diaAlvo) return;
 
-    // Se já está no dia (exceto se for troca de posição no mesmo dia, mas vamos bloquear duplicidade simples)
+    // Bloqueia duplicidade simples no mesmo dia
     if (diaAlvo.selecionados.some(m => m.nome === nomeArrastado)) {
         return showToast(`${nomeArrastado} já está escalado(a) neste dia.`, 'warning');
     }
 
     const membro = membros.find(m => m.nome === nomeArrastado);
-    if (!membro) return; // Se for convidado ou erro
+    if (!membro) return; // Se erro de dados
 
     const erros = [];
 
@@ -431,23 +433,23 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
     if (status.type === 'permanente') erros.push("Restrição Permanente para este turno.");
     if (status.type === 'temporaria') erros.push("Restrição Temporária (Férias/Data).");
 
-    // 2. Validação de Compatibilidade (Duplas)
-    // Verifica com quem ele vai fazer par (todos no card exceto quem está saindo/alvo)
-    const companheiros = diaAlvo.selecionados.filter(m => m.nome !== nomeAlvo && !m.isVaga);
+    // 2. Validação de Compatibilidade (Duplas - Gênero/Cônjuge)
+    // Verifica com quem ele vai fazer par (todos no card exceto vaga ou convidado)
+    const companheiros = diaAlvo.selecionados.filter(m => m.nome !== nomeAlvo && !m.isVaga && !m.isConvidado);
     for (const p of companheiros) {
         if (!saoCompativeis(membro, p)) {
             erros.push(`Incompatibilidade de gênero/cônjuge com ${p.nome}.`);
         }
     }
 
-    // 3. Validação de Fadiga (Monitor de Sequência)
+    // 3. Validação de Fadiga (NOVO: Monitor de Sequência)
     if (isTurnoCulto(diaAlvo.tipo)) {
-        // Ordena cultos cronologicamente
         const cultos = escalaAtual.filter(d => d.data && isTurnoCulto(d.tipo))
                                   .sort((a, b) => a.data - b.data || (a.tipo === 'Domingo Manhã' ? -1 : 1));
         
         const idxAtual = cultos.findIndex(d => d.id === diaAlvo.id);
         
+        // Se tiver pelo menos 2 cultos antes
         if (idxAtual >= 2) {
             const ant1 = cultos[idxAtual - 1];
             const ant2 = cultos[idxAtual - 2];
@@ -461,7 +463,7 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
         }
     }
 
-    // DECISÃO: Executar ou Abrir Modal de Force
+    // DECISÃO: Executar Direto ou Abrir Modal de Force
     if (erros.length > 0) {
         const modal = document.getElementById('modalConfirmacaoForce');
         const msgEl = document.getElementById('msgRestricaoForce');
@@ -473,7 +475,7 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
                 ${erros.map(e => `<li>${e}</li>`).join('')}
             </ul>`;
 
-        // Sobrescreve o onclick do botão Sim para executar a troca ignorando erros
+        // Sobrescreve o onclick para executar ignorando os erros
         btnSim.onclick = () => {
             executarTroca(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId);
             modal.style.display = 'none';
@@ -492,11 +494,10 @@ export function configurarDragAndDrop(dias, justificationData, restricoes, restr
     todasAsRestricoes = restricoes;
     todasAsRestricoesPerm = restricoesPermanentesArg;
 
-    // Targets: Cards de Membro (para substituir) e Vagas
     const dropTargets = document.querySelectorAll('.membro-card, .escala-card');
     
-    // Configura Draggables (Membros nos cards)
-    const membrosDraggables = document.querySelectorAll('.membro-card:not(.vaga-aberta)'); // Vaga não arrasta
+    // Draggables (Membros normais)
+    const membrosDraggables = document.querySelectorAll('.membro-card:not(.vaga-aberta)'); 
     membrosDraggables.forEach(card => {
         card.addEventListener('dragstart', (e) => {
             e.target.classList.add('dragging');
@@ -508,46 +509,36 @@ export function configurarDragAndDrop(dias, justificationData, restricoes, restr
         });
     });
 
-    // Configura Drop Zones (Soltar em cima de um membro ou vaga)
+    // Drop Zones
     dropTargets.forEach(target => {
         target.addEventListener('dragover', (e) => {
             e.preventDefault();
-            // Adiciona feedback visual apenas se for um membro-card ou vaga
             if (e.target.classList.contains('membro-card')) {
                 e.target.classList.add('drag-over');
             }
         });
-
         target.addEventListener('dragleave', (e) => {
             if (e.target.classList.contains('membro-card')) {
                 e.target.classList.remove('drag-over');
             }
         });
-
         target.addEventListener('drop', (e) => {
             e.preventDefault();
             if (e.target.classList.contains('membro-card')) {
                 e.target.classList.remove('drag-over');
             }
 
-            // Recupera dados
             const nomeArrastado = e.dataTransfer.getData('text/plain');
-            // Se veio do painel, o card-id não existe no dataset padrão, usamos flag ou tratamos null
             let cardOrigemId = e.dataTransfer.getData('card-id'); 
-            const origemTipo = e.dataTransfer.getData('origem-tipo'); // setado no painel
+            const origemTipo = e.dataTransfer.getData('origem-tipo'); 
             if (origemTipo === 'painel') cardOrigemId = 'painel';
 
-            // Identifica Alvo
-            // Pode ter soltado em um .membro-card (substituição) ou no .escala-card (adição, se houver lógica pra isso)
-            // Aqui focamos em soltar num slot (.membro-card)
             let cardAlvoElement = e.target.closest('.escala-card');
             if (!cardAlvoElement) return;
-            
             const cardAlvoId = cardAlvoElement.dataset.id;
             
-            // Se soltou num slot específico (membro ou vaga)
             const slotAlvo = e.target.closest('.membro-card');
-            const nomeAlvo = slotAlvo ? slotAlvo.dataset.nome : undefined; // undefined se vaga
+            const nomeAlvo = slotAlvo ? slotAlvo.dataset.nome : undefined;
 
             if (nomeArrastado === nomeAlvo) return;
             
@@ -557,7 +548,7 @@ export function configurarDragAndDrop(dias, justificationData, restricoes, restr
 }
 
 // =========================================================
-// === SEÇÃO DE MODAIS, TOASTS E AUXILIARES (MANTER EXISTENTES) ===
+// === SEÇÃO DE MODAIS, TOASTS E AUXILIARES ===
 // =========================================================
 
 export function abrirModalAcaoEscala(action, escalaId = null, escalaNome = '') {
@@ -569,9 +560,7 @@ export function abrirModalAcaoEscala(action, escalaId = null, escalaNome = '') {
 
     if (action === 'save' || action === 'rename') {
         title.textContent = action === 'save' ? 'Salvar Escala' : 'Renomear Escala';
-        const defaultName = (action === 'save')
-            ? `Escala de ${new Date().toLocaleDateString('pt-BR')}`
-            : escalaNome;
+        const defaultName = (action === 'save') ? `Escala de ${new Date().toLocaleDateString('pt-BR')}` : escalaNome;
         body.innerHTML = `
             <div class="input-group">
                 <input type="text" id="escalaModalInputName" value="${defaultName}" required placeholder=" ">
@@ -605,12 +594,10 @@ export function showToast(message, type = 'success') {
     setTimeout(() => { toast.remove(); }, 5000);
 }
 
-// --- FUNÇÕES DE ANÁLISE E EXPORTAÇÃO (Mantidas) ---
-
 export function exportarEscalaXLSX() {
     const listaCards = document.querySelectorAll('.escala-card:not(.hidden)');
     if (listaCards.length === 0) {
-        showToast('Não há escala visível para exportar. Verifique os filtros.', 'warning');
+        showToast('Não há escala visível para exportar.', 'warning');
         return;
     }
     const wb = XLSX.utils.book_new();
@@ -622,7 +609,7 @@ export function exportarEscalaXLSX() {
         const membrosNodes = card.querySelectorAll('.membro-card');
         const nomes = Array.from(membrosNodes).map(node => {
             if (node.classList.contains('vaga-aberta')) return '[VAGA]';
-            if (node.classList.contains('convidado')) return `${node.innerText} (Ext)`;
+            if (node.classList.contains('convidado')) return `${node.innerText.replace(' (Ext)', '')} (Ext)`;
             return node.textContent.trim();
         });
         const row = [data, tipo, ...nomes];
@@ -638,7 +625,7 @@ export function renderAnaliseConcentracao(filtro = 'all') {
     const container = document.getElementById('diagnosticReportContainer');
     if (!container) return;
 
-    // Função interna simples de análise
+    // Função interna de análise detalhada (mantida da versão original)
     const _analisar = (dias) => {
         const analise = {};
         const turnosCulto = ['Quarta', 'Domingo Manhã', 'Domingo Noite'];
@@ -648,9 +635,20 @@ export function renderAnaliseConcentracao(filtro = 'all') {
             membros.forEach(m => {
                 const parts = dias.filter(d => d.tipo === turno && d.selecionados.some(s => s.nome === m.nome)).length;
                 totalPart += parts;
-                if(parts > 0) membrosDoTurno.push({ nome: m.nome, participacoes: parts });
+                
+                // Pega status para exibir ícones na análise detalhada
+                let status = { type: 'disponivel' };
+                let isDisponivel = true;
+                if (m.suspensao.cultos) { isDisponivel = false; status = { type: 'suspenso' }; }
+                else if (restricoesPermanentes.some(r => r.membro === m.nome && r.diaSemana === turno)) { status = { type: 'permanente' }; isDisponivel = false; }
+                
+                membrosDoTurno.push({ nome: m.nome, participacoes: parts, status: status, isDisponivel: isDisponivel });
             });
-            analise[turno] = { totalParticipacoesNoTurno: totalPart, membrosDoTurno: membrosDoTurno.sort((a,b)=>b.participacoes - a.participacoes) };
+            analise[turno] = { 
+                totalParticipacoesNoTurno: totalPart, 
+                membrosDisponiveis: membrosDoTurno.filter(m => m.isDisponivel).length,
+                membrosDoTurno: membrosDoTurno.sort((a,b)=>b.participacoes - a.participacoes) 
+            };
         });
         return analise;
     };
@@ -659,6 +657,7 @@ export function renderAnaliseConcentracao(filtro = 'all') {
     let contentHTML = '';
 
     if (filtro === 'all') {
+        // ... (Lógica de análise global mantida) ...
         const participacoesGlobais = {};
         membros.forEach(m => { participacoesGlobais[m.nome] = { total: 0 }; });
 
@@ -688,14 +687,18 @@ export function renderAnaliseConcentracao(filtro = 'all') {
                 return `<li><span><strong>${nome}:</strong> ${dados.total} vez(es)${balanceAlertHtml}</span><div class="analysis-details">(${breakdownHtml})</div></li>`;
             }).join('');
 
-        contentHTML = `<div class="analysis-content"><div class="analise-turno-bloco"><h5>Análise Global</h5><ul>${listaMembrosHtml}</ul></div></div>`;
+        contentHTML = `<div class="analysis-content"><div class="analise-turno-bloco"><h5>Análise Global Consolidada</h5><p>Detalhamento por turno.</p><ul>${listaMembrosHtml}</ul></div></div>`;
 
     } else {
-        // Renderiza apenas o turno selecionado
+        // Renderiza turno específico com os ÍCONES de status (RESTURADO)
         if(analise[filtro]) {
             const dados = analise[filtro];
-            const lista = dados.membrosDoTurno.map(m => `<li><strong>${m.nome}:</strong> ${m.participacoes}</li>`).join('');
-            contentHTML = `<div class="analysis-content"><div class="analise-turno-bloco"><h5>${filtro}</h5><ul>${lista || '<li>Ninguém escalado.</li>'}</ul></div></div>`;
+            const lista = dados.membrosDoTurno.map(m => {
+                const statusConfig = VISUAL_CONFIG.status[m.status.type];
+                const statusIcon = getStatusIconHTML(statusConfig);
+                return `<li><span><strong>${m.nome}:</strong> ${m.participacoes} vez(es)</span>${statusIcon}</li>`;
+            }).join('');
+            contentHTML = `<div class="analysis-content"><div class="analise-turno-bloco"><h5>${filtro}</h5><p>Total: <strong>${dados.totalParticipacoesNoTurno}</strong> | Disp: <strong>${dados.membrosDisponiveis}</strong></p><ul>${lista || '<li>Vazio.</li>'}</ul></div></div>`;
         }
     }
     container.innerHTML = contentHTML;
@@ -705,12 +708,8 @@ export function renderAnaliseConcentracao(filtro = 'all') {
 export function exibirIndiceEquilibrio(justificationData) {
     const container = document.getElementById('balanceIndexContainer');
     if (!container) return;
-
     const counts = Object.values(justificationData).map(d => d.participations);
-    if (counts.length === 0 || counts.reduce((a,b)=>a+b,0) === 0) {
-        container.style.display = 'none';
-        return;
-    }
+    if (counts.length === 0 || counts.reduce((a,b)=>a+b,0) === 0) { container.style.display = 'none'; return; }
     
     const mean = counts.reduce((a,b)=>a+b,0) / counts.length;
     const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
@@ -719,12 +718,7 @@ export function exibirIndiceEquilibrio(justificationData) {
     container.style.display = 'block';
     container.innerHTML = `
         <h4>Índice de Equilíbrio <small>(clique para detalhes)</small></h4>
-        <div class="balance-bar-background">
-            <div class="balance-bar-foreground" style="width: ${balancePercentage.toFixed(2)}%;">
-                ${balancePercentage.toFixed(0)}%
-            </div>
-        </div>`;
-    
+        <div class="balance-bar-background"><div class="balance-bar-foreground" style="width: ${balancePercentage.toFixed(2)}%;">${balancePercentage.toFixed(0)}%</div></div>`;
     const bar = container.querySelector('.balance-bar-foreground');
     if (balancePercentage < 60) bar.style.background = 'linear-gradient(90deg, #dc3545, #ff6b6b)';
     else if (balancePercentage < 85) bar.style.background = 'linear-gradient(90deg, #ffc107, #ffda58)';
@@ -749,7 +743,6 @@ export function renderizarFiltros(dias) {
             e.target.classList.add('active');
             const filtro = e.target.dataset.filter;
             
-            // Filtra visualmente os cards
             document.querySelectorAll('.escala-card').forEach(card => {
                 card.classList.toggle('hidden', filtro !== 'all' && card.dataset.turno !== filtro);
             });
@@ -761,7 +754,6 @@ export function renderizarFiltros(dias) {
 export function renderDisponibilidadeGeral() {
     const container = document.getElementById('disponibilidadeContainer');
     if (!container) return;
-
     const turnos = ['Quarta', 'Domingo Manhã', 'Domingo Noite', 'Sábado', 'Oração no WhatsApp'];
     let contentHTML = '';
     
@@ -770,7 +762,7 @@ export function renderDisponibilidadeGeral() {
         const listaIndisponiveis = [];
 
         membros.forEach(membro => {
-            const status = checkMemberAvailability(membro, turno, null); // Sem data especifica, apenas config
+            const status = checkMemberAvailability(membro, turno, null); 
             const statusConfig = VISUAL_CONFIG.status[status.type];
             const statusIcon = getStatusIconHTML(statusConfig);
             const membroHTML = `<li><span>${membro.nome}</span>${statusIcon}</li>`;

@@ -1,7 +1,7 @@
 // js/ui.js
 
 import { membros, restricoes, restricoesPermanentes, escalasSalvas } from './data-manager.js';
-import { saoCompativeis } from './availability.js';
+import { saoCompativeis, checkMemberAvailability } from './availability.js';
 
 // =========================================================
 // === SEÇÃO DE CONFIGURAÇÃO E ESTADO ===
@@ -35,17 +35,20 @@ export let escalaAtual = [];
 let justificationDataAtual = {};
 let todasAsRestricoes = [];
 let todasAsRestricoesPerm = [];
-
+let diaSelecionadoNoPainelId = null; // Rastreia qual dia está ativo no painel lateral
 
 // =========================================================
-// === SEÇÃO DE FUNÇÕES DE ATUALIZAÇÃO DA UI ===
+// === SEÇÃO DE FUNÇÕES DE ATUALIZAÇÃO DA UI (LISTAS GERAIS) ===
 // =========================================================
 
 function atualizarListaMembros() {
     const lista = document.getElementById('listaMembros');
+    if(!lista) return;
+
     membros.sort((a, b) => a.nome.localeCompare(b.nome));
     let maleCount = 0;
     let femaleCount = 0;
+    
     lista.innerHTML = membros.map((m, index) => {
         if (m.genero === 'M') maleCount++;
         else if (m.genero === 'F') femaleCount++;
@@ -81,22 +84,30 @@ function atualizarListaMembros() {
                 </div>
             </li>`;
     }).join('');
-    document.getElementById('maleCount').textContent = maleCount;
-    document.getElementById('femaleCount').textContent = femaleCount;
-    document.getElementById('totalCount').textContent = membros.length;
+    
+    const elMale = document.getElementById('maleCount');
+    const elFemale = document.getElementById('femaleCount');
+    const elTotal = document.getElementById('totalCount');
+    
+    if(elMale) elMale.textContent = maleCount;
+    if(elFemale) elFemale.textContent = femaleCount;
+    if(elTotal) elTotal.textContent = membros.length;
 }
 
 function atualizarSelectMembros() {
     const selects = [document.getElementById('membroRestricao'), document.getElementById('membroRestricaoPermanente')];
     membros.sort((a, b) => a.nome.localeCompare(b.nome));
     selects.forEach(select => {
-        select.innerHTML = '<option value="">Selecione um membro</option>' +
-            membros.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+        if(select) {
+            select.innerHTML = '<option value="">Selecione um membro</option>' +
+                membros.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('');
+        }
     });
 }
 
 function atualizarListaRestricoes() {
     const lista = document.getElementById('listaRestricoes');
+    if(!lista) return;
     restricoes.sort((a, b) => a.membro.localeCompare(b.membro));
     lista.innerHTML = restricoes.map((r, index) =>
         `<li>${r.membro}: ${new Date(r.inicio).toLocaleDateString('pt-BR', {timeZone: 'UTC'})} a ${new Date(r.fim).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}
@@ -105,6 +116,7 @@ function atualizarListaRestricoes() {
 
 function atualizarListaRestricoesPermanentes() {
     const lista = document.getElementById('listaRestricoesPermanentes');
+    if(!lista) return;
     restricoesPermanentes.sort((a, b) => a.membro.localeCompare(b.membro));
     lista.innerHTML = restricoesPermanentes.map((r, index) =>
         `<li>${r.membro}: ${r.diaSemana}
@@ -137,6 +149,10 @@ export function atualizarTodasAsListas() {
     atualizarListaEscalasSalvas();
 }
 
+// =========================================================
+// === SEÇÃO DE MODAIS (GERAL) ===
+// =========================================================
+
 export function abrirModalAcaoEscala(action, escalaId = null, escalaNome = '') {
     const modal = document.getElementById('escalaActionModal');
     const title = document.getElementById('escalaModalTitle');
@@ -168,12 +184,32 @@ export function showTab(tabId) {
 }
 
 export function toggleConjuge() {
-    document.getElementById('conjugeField').style.display =
-        document.getElementById('conjugeParticipa').checked ? 'block' : 'none';
+    const field = document.getElementById('conjugeField');
+    const check = document.getElementById('conjugeParticipa');
+    if(field && check) {
+        field.style.display = check.checked ? 'block' : 'none';
+    }
 }
 
 export function setupUiListeners() {
-    document.getElementById('conjugeParticipa').addEventListener('change', toggleConjuge);
+    const conjugeCheck = document.getElementById('conjugeParticipa');
+    if(conjugeCheck) {
+        conjugeCheck.addEventListener('change', toggleConjuge);
+    }
+
+    // Listener para o botão de fechar o painel lateral
+    const btnFecharPainel = document.getElementById('btn-fechar-painel');
+    if (btnFecharPainel) {
+        btnFecharPainel.addEventListener('click', () => {
+            document.getElementById('painelSuplentes').style.display = 'none';
+        });
+    }
+
+    // Listener para confirmar adição de externo
+    const btnConfirmarExterno = document.getElementById('btn-confirmar-externo');
+    if (btnConfirmarExterno) {
+        btnConfirmarExterno.addEventListener('click', confirmarAdicaoExterno);
+    }
 }
 
 export function showToast(message, type = 'success') {
@@ -197,7 +233,7 @@ export function exportarEscalaXLSX() {
     listaCards.forEach(card => {
         const data = card.querySelector('.escala-card__header span').textContent.trim();
         const tipo = card.querySelector('.escala-card__header h4').textContent.trim();
-        const membrosNodes = card.querySelectorAll('.membro-card');
+        const membrosNodes = card.querySelectorAll('.membro-card:not(.vaga-aberta)'); // Ignora vagas na exportação
         const nomes = Array.from(membrosNodes).map(node => node.textContent.trim());
         const row = [data, tipo, ...nomes];
         while (row.length < headers.length) { row.push(''); }
@@ -210,7 +246,87 @@ export function exportarEscalaXLSX() {
 
 
 // =========================================================================
-// === SEÇÃO DE FUNÇÕES DE RENDERIZAÇÃO DA ESCALA E ANÁLISE ===
+// === SEÇÃO DE PAINEL LATERAL INTELIGENTE ===
+// =========================================================================
+
+/**
+ * Atualiza o painel lateral com sugestões de membros para o dia selecionado.
+ * Filtra quem já está na escala e ordena por: Menor Participação > Ordem Alfabética.
+ */
+export function atualizarPainelSuplentes(cardId) {
+    const dia = escalaAtual.find(d => d.id === cardId);
+    if (!dia) return;
+
+    diaSelecionadoNoPainelId = cardId; // Marca o dia ativo
+    const painel = document.getElementById('painelSuplentes');
+    const lista = document.getElementById('listaSuplentes');
+    const contexto = document.getElementById('painel-contexto');
+
+    if (painel && lista && contexto) {
+        painel.style.display = 'block';
+        contexto.innerHTML = `<strong>${dia.tipo}</strong> <br> ${dia.data.toLocaleDateString('pt-BR')}`;
+
+        // Nomes de quem JÁ está escalado neste dia (incluindo convidados)
+        const escaladosNesteDia = dia.selecionados
+            .filter(s => s.nome && !s.isVaga)
+            .map(s => s.nome);
+
+        // Prepara lista de candidatos
+        const candidatos = membros
+            .filter(m => !escaladosNesteDia.includes(m.nome))
+            .map(m => {
+                const parts = justificationDataAtual[m.nome]?.participations || 0;
+                const status = checkMemberAvailability(m, dia.tipo, dia.data);
+                return { ...m, parts, status };
+            })
+            .sort((a, b) => {
+                // 1. Prioridade: Quem tem menos participações
+                if (a.parts !== b.parts) return a.parts - b.parts;
+                // 2. Desempate: Nome
+                return a.nome.localeCompare(b.nome);
+            });
+
+        // Renderiza
+        lista.innerHTML = candidatos.map(m => {
+            const isRestrito = m.status.type !== 'disponivel';
+            const alertaIcon = isRestrito ? '⚠️' : '';
+            const statusClass = isRestrito ? 'text-muted' : '';
+            const badgeClass = m.parts <= 1 ? 'low-part' : ''; // Destaque visual
+            
+            // Título do tooltip com motivo da restrição
+            let title = `Participações: ${m.parts}`;
+            if (isRestrito) title += ` | Restrição: ${m.status.type}`;
+
+            return `
+                <li draggable="true" class="suplente-item ${statusClass}" data-nome="${m.nome}" title="${title}">
+                    <span>${alertaIcon} ${m.nome}</span>
+                    <span class="suplente-badge ${badgeClass}">${m.parts}x</span>
+                </li>
+            `;
+        }).join('');
+
+        // Re-aplica listeners de drag para os novos itens da lista
+        setupDragParaSuplentes();
+    }
+}
+
+function setupDragParaSuplentes() {
+    const itensSuplentes = document.querySelectorAll('.suplente-item');
+    itensSuplentes.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', e.target.dataset.nome);
+            e.dataTransfer.setData('origem', 'painel'); // Flag para identificar origem
+            e.target.style.opacity = '0.5';
+        });
+        item.addEventListener('dragend', (e) => {
+            e.target.style.opacity = '1';
+        });
+    });
+}
+
+
+// =========================================================================
+// === SEÇÃO DE RENDERIZAÇÃO DA ESCALA E ANÁLISE ===
 // =========================================================================
 
 function _analisarConcentracao(diasGerados) {
@@ -238,7 +354,8 @@ function _analisarConcentracao(diasGerados) {
                 membrosDisponiveisCount++;
             }
 
-            const participacoes = diasGerados.filter(d => d.tipo === turno && d.selecionados.some(s => s.nome === membro.nome)).length;
+            // Filtra participações ignorando vagas e convidados externos na contagem estatística interna
+            const participacoes = diasGerados.filter(d => d.tipo === turno && d.selecionados.some(s => s.nome === membro.nome && !s.isConvidado && !s.isVaga)).length;
             totalParticipacoesNoTurno += participacoes;
 
             membrosDoTurno.push({
@@ -272,6 +389,9 @@ export function renderAnaliseConcentracao(filtro = 'all') {
 
         escalaAtual.forEach(dia => {
             dia.selecionados.forEach(membro => {
+                // Ignora Vagas e Convidados na análise global
+                if (membro.isVaga || membro.isConvidado) return;
+
                 const nomeMembro = membro.nome;
                 if (participacoesGlobais[nomeMembro]) {
                     participacoesGlobais[nomeMembro].total++;
@@ -317,13 +437,12 @@ export function renderAnaliseConcentracao(filtro = 'all') {
             <div class="analysis-content">
                 <div class="analise-turno-bloco">
                     <h5>Análise Global Consolidada</h5>
-                    <p>Total de participações e detalhamento por turno. Passe o mouse sobre os números para ver os detalhes.</p>
+                    <p>Total de participações e detalhamento por turno (exclui convidados).</p>
                     <ul>${listaMembrosHtml}</ul>
                 </div>
             </div>`;
 
     } else {
-        // Lógica para filtros específicos
         const turnosParaRenderizar = [filtro];
         contentHTML = turnosParaRenderizar
             .filter(turno => analise[turno])
@@ -334,7 +453,7 @@ export function renderAnaliseConcentracao(filtro = 'all') {
                     const statusIcon = getStatusIconHTML(statusConfig);
                     return `<li><span><strong>${membro.nome}:</strong> ${membro.participacoes} vez(es)</span>${statusIcon}</li>`;
                 }).join('');
-                return `<div class="analise-turno-bloco"><h5>Análise: ${turno}</h5><p>Total de participações: <strong>${dados.totalParticipacoesNoTurno}</strong> | Membros disponíveis: <strong>${dados.membrosDisponiveis}</strong></p><ul>${listaMembrosHtml || '<li>Nenhuma análise disponível.</li>'}</ul></div>`;
+                return `<div class="analise-turno-bloco"><h5>Análise: ${turno}</h5><p>Total: <strong>${dados.totalParticipacoesNoTurno}</strong> | Disp: <strong>${dados.membrosDisponiveis}</strong></p><ul>${listaMembrosHtml || '<li>Nenhuma análise disponível.</li>'}</ul></div>`;
             }).join('');
         contentHTML = contentHTML ? `<div class="analysis-content">${contentHTML}</div>` : '';
     }
@@ -345,10 +464,6 @@ export function renderAnaliseConcentracao(filtro = 'all') {
 
 export function renderEscalaEmCards(dias) {
     const diasValidos = dias.filter(dia => dia && dia.data instanceof Date);
-    if (dias.length !== diasValidos.length) {
-        console.warn('Itens de dia inválidos foram filtrados e não serão renderizados.');
-    }
-
     escalaAtual = diasValidos;
     const container = document.getElementById('resultadoEscala');
     container.innerHTML = '';
@@ -356,25 +471,35 @@ export function renderEscalaEmCards(dias) {
 
     diasValidos.forEach(dia => {
         const turnoConfig = VISUAL_CONFIG.turnos[dia.tipo] || { cardClass: '' };
+        
+        // Adicionamos onclick no CARD para atualizar o painel lateral
         const cardHTML = `
-            <div class="escala-card ${turnoConfig.cardClass}" data-id="${dia.id}" data-turno="${dia.tipo}">
+            <div class="escala-card ${turnoConfig.cardClass}" data-id="${dia.id}" data-turno="${dia.tipo}" onclick="window.atualizarPainelSuplentes('${dia.id}')">
                 <div class="escala-card__header">
                     <h4>${dia.tipo}</h4>
                     <span>${dia.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                 </div>
                 <div class="escala-card__body">
-                    ${dia.selecionados.map(m => `<div class="membro-card" draggable="true" data-nome="${m.nome}">${m.nome}</div>`).join('')}
+                    ${dia.selecionados.map((m, idx) => {
+                        // Renderização condicional para Vagas e Convidados
+                        if (m.isVaga) {
+                            return `<div class="membro-card vaga-aberta" onclick="window.abrirModalConvidado('${dia.id}', ${idx}); event.stopPropagation();">
+                                        <i class="fas fa-plus-circle"></i> Vaga Aberta
+                                    </div>`;
+                        }
+                        if (m.isConvidado) {
+                            return `<div class="membro-card convidado" draggable="true" data-nome="${m.nome}" data-externo="true">
+                                        ${m.nome}
+                                    </div>`;
+                        }
+                        return `<div class="membro-card" draggable="true" data-nome="${m.nome}">${m.nome}</div>`;
+                    }).join('')}
                 </div>
             </div>`;
         container.innerHTML += cardHTML;
     });
 }
 
-/**
- * [NOVA FUNÇÃO ADICIONADA]
- * Calcula e exibe o índice de equilíbrio da escala com base nas participações.
- * @param {object} justificationData - Objeto com as contagens de participação de cada membro.
- */
 export function exibirIndiceEquilibrio(justificationData) {
     const container = document.getElementById('balanceIndexContainer');
     if (!container) return;
@@ -395,8 +520,6 @@ export function exibirIndiceEquilibrio(justificationData) {
     const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
     const stdDev = Math.sqrt(variance);
 
-    // Converte o desvio padrão em um percentual de equilíbrio.
-    // Quanto menor o desvio, mais perto de 100%.
     let balancePercentage = Math.max(0, 100 - (stdDev / mean) * 100);
     balancePercentage = Math.min(100, balancePercentage);
 
@@ -522,64 +645,178 @@ export function renderDisponibilidadeGeral() {
 }
 
 // =========================================================================
-// === SEÇÃO DE DRAG & DROP ===
+// === SEÇÃO DE FUNÇÕES DE MODAIS (EXTERNO E FORCE) ===
 // =========================================================================
 
-function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId) {
+// Função exposta para o HTML para abrir o modal
+window.abrirModalConvidado = function(diaId, indiceVaga) {
+    document.getElementById('externoDiaId').value = diaId;
+    document.getElementById('externoIndiceVaga').value = indiceVaga;
+    document.getElementById('inputNomeExterno').value = '';
+    document.getElementById('modalNomeExterno').style.display = 'flex';
+};
+
+// Função para fechar modal e adicionar
+function confirmarAdicaoExterno() {
+    const diaId = document.getElementById('externoDiaId').value;
+    const indice = parseInt(document.getElementById('externoIndiceVaga').value);
+    const nome = document.getElementById('inputNomeExterno').value;
+
+    if (!nome) {
+        showToast('Digite um nome para o convidado.', 'warning');
+        return;
+    }
+
+    const dia = escalaAtual.find(d => d.id === diaId);
+    if (dia) {
+        // Substitui a vaga (ou membro) pelo objeto convidado
+        dia.selecionados[indice] = {
+            nome: nome,
+            isConvidado: true,
+            genero: 'X' // Genero neutro/padrão
+        };
+
+        renderEscalaEmCards(escalaAtual);
+        showToast(`Convidado ${nome} adicionado!`, 'success');
+        document.getElementById('modalNomeExterno').style.display = 'none';
+    }
+}
+
+// Função auxiliar para exibir o painel do dia correto
+window.atualizarPainelSuplentes = atualizarPainelSuplentes;
+
+
+// =========================================================================
+// === SEÇÃO DE DRAG & DROP E MANIPULAÇÃO LÓGICA ===
+// =========================================================================
+
+/**
+ * Função interna que executa a troca de membros após todas as validações (ou force override).
+ * @param {string} nomeArrastado 
+ * @param {string} nomeAlvo 
+ * @param {string} cardOrigemId (pode ser 'painel')
+ * @param {string} cardAlvoId 
+ * @param {boolean} isSlotVazio (se true, não remove o alvo, apenas preenche)
+ */
+function executarTroca(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, isSlotVazio = false) {
     const diaAlvo = escalaAtual.find(d => d.id === cardAlvoId);
     if (!diaAlvo) return;
 
     const membroArrastadoObj = membros.find(m => m.nome === nomeArrastado);
     if (!membroArrastadoObj) return;
 
-    if (diaAlvo.selecionados.some(m => m.nome === nomeArrastado)) {
-        showToast(`${nomeArrastado} já está escalado(a) neste dia. Ação cancelada.`, 'warning');
-        return;
-    }
-
-    const diaAlvoData = new Date(diaAlvo.data); diaAlvoData.setHours(0,0,0,0);
-    const temRestricaoTemp = todasAsRestricoes.some(r => r.membro === nomeArrastado && diaAlvoData >= new Date(r.inicio) && diaAlvoData <= new Date(r.fim));
-    const temRestricaoPerm = todasAsRestricoesPerm.some(r => r.membro === nomeArrastado && r.diaSemana === diaAlvo.tipo);
-
-    if (temRestricaoTemp || temRestricaoPerm) {
-        showToast(`${nomeArrastado} tem uma restrição para ${diaAlvo.tipo} neste dia.`, 'error');
-        return;
-    }
-
-    const outrosMembrosNoCard = diaAlvo.selecionados.filter(m => m.nome !== nomeAlvo);
-    let isCompativel = true;
-    for (const companheiro of outrosMembrosNoCard) {
-        if (!saoCompativeis(membroArrastadoObj, companheiro)) {
-            isCompativel = false;
-            break;
-        }
-    }
-
-    if (!isCompativel) {
-        showToast('Ação inválida. A dupla formada não segue a regra de mesmo gênero ou cônjuges.', 'error');
-        return;
-    }
-
-    const indexAlvoDestino = diaAlvo.selecionados.findIndex(m => m.nome === nomeAlvo);
-    if (indexAlvoDestino === -1) return;
-
-    diaAlvo.selecionados.splice(indexAlvoDestino, 1, membroArrastadoObj);
-
-    if (justificationDataAtual[nomeAlvo]) {
+    // Atualiza contadores (remove do alvo se não for vaga, adiciona ao arrastado)
+    if (!isSlotVazio && justificationDataAtual[nomeAlvo]) {
         justificationDataAtual[nomeAlvo].participations--;
     }
     if (justificationDataAtual[nomeArrastado]) {
         justificationDataAtual[nomeArrastado].participations++;
     }
 
+    // Se veio de outro CARD da escala, precisa remover de lá
+    if (cardOrigemId !== 'painel') {
+        const diaOrigem = escalaAtual.find(d => d.id === cardOrigemId);
+        if (diaOrigem) {
+            const idxOrigem = diaOrigem.selecionados.findIndex(m => m.nome === nomeArrastado);
+            if (idxOrigem > -1) {
+                // Se estamos fazendo swap, o alvo vai para a origem. Se era vaga, origem vira vaga.
+                if (isSlotVazio) {
+                    diaOrigem.selecionados[idxOrigem] = { nome: null, isVaga: true };
+                } else {
+                    const membroAlvoObj = membros.find(m => m.nome === nomeAlvo);
+                    if (membroAlvoObj) diaOrigem.selecionados[idxOrigem] = membroAlvoObj;
+                }
+            }
+        }
+    }
+
+    // Coloca o arrastado no destino
+    if (isSlotVazio) {
+        // Encontra a primeira vaga vazia ou o slot clicado
+        // Aqui assumimos que o alvo era o texto "Vaga Aberta" ou similar
+        const idxDestino = diaAlvo.selecionados.findIndex(m => m.isVaga || m.nome === nomeAlvo);
+        if (idxDestino > -1) diaAlvo.selecionados[idxDestino] = membroArrastadoObj;
+    } else {
+        const idxDestino = diaAlvo.selecionados.findIndex(m => m.nome === nomeAlvo);
+        if (idxDestino > -1) diaAlvo.selecionados[idxDestino] = membroArrastadoObj;
+    }
+
     renderEscalaEmCards(escalaAtual);
     exibirIndiceEquilibrio(justificationDataAtual);
     configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
     
+    // Atualiza painel se estiver aberto
+    if(diaSelecionadoNoPainelId) atualizarPainelSuplentes(diaSelecionadoNoPainelId);
+
     const filtroAtivo = document.querySelector('#escala-filtros button.active')?.dataset.filter || 'all';
     renderAnaliseConcentracao(filtroAtivo);
 
-    showToast(`${nomeArrastado} foi adicionado(a) à escala, substituindo ${nomeAlvo}.`, 'success');
+    showToast(`${nomeArrastado} escalado com sucesso.`, 'success');
+}
+
+
+function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, isSlotVazio = false) {
+    const diaAlvo = escalaAtual.find(d => d.id === cardAlvoId);
+    if (!diaAlvo) return;
+
+    // Impede duplicidade no mesmo dia
+    if (diaAlvo.selecionados.some(m => m.nome === nomeArrastado)) {
+        showToast(`${nomeArrastado} já está neste dia.`, 'warning');
+        return;
+    }
+
+    const membro = membros.find(m => m.nome === nomeArrastado);
+    if (!membro) return;
+
+    // === VERIFICAÇÃO DE RESTRIÇÕES (CRIA LISTA DE ERROS) ===
+    const erros = [];
+    
+    // 1. Restrições de Data/Turno
+    const diaAlvoData = new Date(diaAlvo.data); diaAlvoData.setHours(0,0,0,0);
+    const temRestricaoTemp = todasAsRestricoes.some(r => r.membro === nomeArrastado && diaAlvoData >= new Date(r.inicio) && diaAlvoData <= new Date(r.fim));
+    const temRestricaoPerm = todasAsRestricoesPerm.some(r => r.membro === nomeArrastado && r.diaSemana === diaAlvo.tipo);
+    
+    // Verifica suspensão
+    let tipoSuspencaoKey = 'cultos';
+    if(diaAlvo.tipo === 'Sábado') tipoSuspencaoKey = 'sabado';
+    if(diaAlvo.tipo === 'Oração no WhatsApp') tipoSuspencaoKey = 'whatsapp';
+    
+    if (membro.suspensao[tipoSuspencaoKey]) erros.push(`Membro suspenso de: ${diaAlvo.tipo}`);
+    if (temRestricaoPerm) erros.push(`Restrição permanente para: ${diaAlvo.tipo}`);
+    if (temRestricaoTemp) erros.push(`Restrição temporária (férias/ausência) na data.`);
+
+    // 2. Compatibilidade (Gênero/Cônjuge) - Apenas se não for vaga e tiver gente lá
+    if (!isSlotVazio) {
+        const outrosMembros = diaAlvo.selecionados.filter(m => m.nome !== nomeAlvo && !m.isVaga);
+        for (const companheiro of outrosMembros) {
+            if (!saoCompativeis(membro, companheiro)) {
+                erros.push(`Incompatível com ${companheiro.nome} (Gênero/Cônjuge).`);
+                break;
+            }
+        }
+    }
+
+    // === DECISÃO: FORÇA OU EXECUTA ===
+    if (erros.length > 0) {
+        // Abre Modal de Force
+        const modal = document.getElementById('modalConfirmacaoForce');
+        const msg = document.getElementById('msgRestricaoForce');
+        const btnSim = document.getElementById('btn-force-sim');
+
+        msg.innerHTML = `<strong>Impedimentos detectados:</strong><ul>${erros.map(e => `<li>${e}</li>`).join('')}</ul>`;
+        
+        // Define ação do botão SIM (Sobrescreve onclick anterior para evitar closures errados)
+        btnSim.onclick = function() {
+            executarTroca(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, isSlotVazio);
+            modal.style.display = 'none';
+        };
+
+        modal.style.display = 'flex';
+        return; // Interrompe fluxo normal
+    }
+
+    // Se não houver erros, executa direto
+    executarTroca(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, isSlotVazio);
 }
 
 
@@ -589,18 +826,26 @@ export function configurarDragAndDrop(dias, justificationData, restricoes, restr
     todasAsRestricoes = restricoes;
     todasAsRestricoesPerm = restricoesPermanentes;
 
-    const membrosCards = document.querySelectorAll('.membro-card');
+    const membrosCards = document.querySelectorAll('.membro-card:not(.convidado)');
+    
     membrosCards.forEach(card => {
+        // Drag Start (Origem: Card)
         card.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('vaga-aberta')) {
+                e.preventDefault(); // Vagas não podem ser arrastadas, apenas receber drops
+                return;
+            }
             e.target.classList.add('dragging');
             e.dataTransfer.setData('text/plain', e.target.dataset.nome);
             e.dataTransfer.setData('card-id', e.target.closest('.escala-card').dataset.id);
+            e.dataTransfer.setData('origem', 'card');
         });
 
         card.addEventListener('dragend', (e) => {
             e.target.classList.remove('dragging');
         });
 
+        // Drag Over
         card.addEventListener('dragover', (e) => {
             e.preventDefault();
             if (!e.target.classList.contains('dragging')) {
@@ -612,17 +857,29 @@ export function configurarDragAndDrop(dias, justificationData, restricoes, restr
             e.target.classList.remove('drag-over');
         });
 
+        // Drop (Destino: Card ou Vaga)
         card.addEventListener('drop', (e) => {
             e.preventDefault();
             e.target.classList.remove('drag-over');
+            
             const nomeArrastado = e.dataTransfer.getData('text/plain');
-            const cardOrigemId = e.dataTransfer.getData('card-id');
-            const nomeAlvo = e.target.dataset.nome;
-            const cardAlvoId = e.target.closest('.escala-card').dataset.id;
+            const cardOrigemId = e.dataTransfer.getData('card-id') || 'painel'; // Se vier do painel, ID é 'painel'
+            const origemTipo = e.dataTransfer.getData('origem');
+            
+            // Destino
+            const cardAlvoElement = e.target.closest('.escala-card');
+            const cardAlvoId = cardAlvoElement.dataset.id;
+            const isVaga = e.target.classList.contains('vaga-aberta');
+            let nomeAlvo = e.target.dataset.nome;
+
+            if (isVaga) nomeAlvo = 'VAGA'; // Placeholder
             
             if (nomeArrastado === nomeAlvo) return;
             
-            remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId);
+            remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, isVaga);
         });
     });
+    
+    // Garante que os itens do painel lateral (se já renderizados) tenham drag listeners
+    setupDragParaSuplentes();
 }

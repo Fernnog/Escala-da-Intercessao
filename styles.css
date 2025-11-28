@@ -1023,6 +1023,28 @@ footer {
     cursor: grabbing;
 }
 
+/* =========================================================================
+   NOVOS ESTILOS: INDICADORES VISUAIS DE RESTRIÇÃO NA LISTA LATERAL
+   (Prioridade 3 do Plano de Evolução)
+   ========================================================================= */
+
+/* Indicador visual para itens com restrição: Borda lateral amarela */
+.suplente-item.com-restricao {
+    border-left: 4px solid #ffc107 !important;
+    background-color: #fffbf2; /* Fundo sutilmente amarelado */
+}
+
+/* Reforço para o cursor, garantindo que o usuário saiba que pode arrastar */
+.suplente-item {
+    cursor: grab;
+}
+
+.suplente-item:active {
+    cursor: grabbing;
+}
+
+/* ========================================================================= */
+
 /* Badges de contagem */
 .suplente-badge {
     font-size: 0.75em;

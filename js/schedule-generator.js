@@ -1,7 +1,7 @@
 // ARQUIVO: schedule-generator.js
 
 import { membros, restricoes, restricoesPermanentes } from './data-manager.js';
-import { exibirIndiceEquilibrio, renderEscalaEmCards, renderAnaliseConcentracao, renderizarFiltros, configurarDragAndDrop, aplicarFeedbackFadiga } from './ui.js';
+import { exibirIndiceEquilibrio, renderEscalaEmCards, renderAnaliseConcentracao, renderizarFiltros, configurarDragAndDrop} from './ui.js';
 import { checkMemberAvailability, saoCompativeis } from './availability.js';
 
 // Configurações Globais do Gerador

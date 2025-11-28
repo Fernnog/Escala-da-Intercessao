@@ -635,14 +635,14 @@ window.atualizarPainelSuplentes = function(cardId) {
             const status = checkMemberAvailability(m, dia.tipo, dia.data);
             const isAvailable = status.type === 'disponivel';
             
-            // Definição visual do status na lista lateral
+            // Define ícone e classe baseados na disponibilidade
             let icon = '<i class="fas fa-check-circle" style="color:#28a745"></i>';
             let restricaoClass = '';
             let title = 'Disponível';
 
             if (!isAvailable) {
                 restricaoClass = 'com-restricao';
-                icon = '<i class="fas fa-exclamation-triangle" style="color:#ffc107"></i>'; // Warning Amarelo
+                icon = '<i class="fas fa-exclamation-triangle" style="color:#ffc107"></i>';
                 if (status.type === 'suspenso') title = 'Suspenso';
                 else if (status.type === 'permanente') title = 'Restrição Permanente';
                 else if (status.type === 'temporaria') title = 'Restrição Temporária (Férias)';
@@ -696,6 +696,10 @@ window.confirmarAdicaoExterno = function() {
         };
         renderEscalaEmCards(escalaAtual);
         exibirIndiceEquilibrio(justificationDataAtual);
+
+        // RECONECTA EVENTOS DE DRAG & DROP APÓS ATUALIZAÇÃO
+        configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
+
         document.getElementById('modalNomeExterno').style.display = 'none';
         showToast(`Convidado ${nome} adicionado.`, 'success');
     }
@@ -717,10 +721,8 @@ function _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, isFromSuple
             if (idx > -1) {
                 // Se estamos trocando um por outro
                 if (nomeAlvo && !diaAlvo.selecionados[indexAlvo].isVaga) {
-                     // Lógica de Swap complexa omitida para simplificação:
-                     // Aqui assumimos que se arrasta para substituir, o anterior sai ou vai pra vaga (se implementado swap direto)
-                     // Neste MVP: Quem sai volta pro banco (apenas substituição)
-                     d.selecionados[idx] = { nome: null, isVaga: true }; // Deixa vaga onde estava
+                     // Lógica de Swap simplificada: Quem sai volta pro banco
+                     d.selecionados[idx] = { nome: null, isVaga: true };
                 } else {
                      d.selecionados[idx] = { nome: null, isVaga: true };
                 }
@@ -742,6 +744,9 @@ function _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, isFromSuple
     
     const filtroAtivo = document.querySelector('#escala-filtros button.active')?.dataset.filter || 'all';
     renderAnaliseConcentracao(filtroAtivo);
+
+    // RECONECTA EVENTOS DE DRAG & DROP APÓS ATUALIZAÇÃO DOM
+    configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
     
     showToast('Alteração realizada com sucesso.', 'success');
 }
@@ -776,13 +781,6 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, sour
     const temRestricaoPerm = todasAsRestricoesPerm.some(r => r.membro === nomeArrastado && r.diaSemana === diaAlvo.tipo);
     const suspenso = checkMemberAvailability(membroArrastadoObj, diaAlvo.tipo).type === 'suspenso';
 
-    // Validação de Fadiga (3 turnos)
-    let alertaFadiga = false;
-    if (['Quarta', 'Domingo Manhã', 'Domingo Noite'].includes(diaAlvo.tipo)) {
-         // (Lógica simplificada de look-back aqui se necessário, ou confiar no visual pós-render)
-         // Para o modal, seria ideal checar.
-    }
-
     const erros = [];
     if (temRestricaoTemp) erros.push("Restrição Temporária (Férias/Ausência)");
     if (temRestricaoPerm) erros.push("Restrição Permanente de Dia/Turno");
@@ -796,18 +794,11 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, sour
         }
     }
 
+    // SE HOUVER ERROS, MOSTRA TOAST E PERMITE TROCA (SEM MODAL)
     if (erros.length > 0) {
-        // LÓGICA ATUALIZADA (Prioridade 1): Executa a troca MESMO com erros, mas avisa.
-        
-        // 1. Executa a troca
         _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, sourceType === 'suplente');
-
-        // 2. Monta mensagem amigável de alerta
         const msgErro = erros.join(', ');
-        
-        // 3. Exibe alerta amarelo (Warning) em vez de bloquear
-        showToast(`Troca realizada com alerta: ${msgErro}`, 'warning');
-        
+        showToast(`Alerta: ${msgErro}`, 'warning');
         return;
     }
 

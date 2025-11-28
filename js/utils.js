@@ -6,6 +6,7 @@
 /**
  * Calcula a contagem de participação de cada membro com base em uma escala de dias.
  * Esta função centraliza a lógica de contagem para garantir consistência.
+ * ATUALIZADO: Ignora vagas vazias (isVaga) e convidados externos (isConvidado).
  * @param {Array<object>} dias - A lista de dias da escala, cada um com um array 'selecionados'.
  * @param {Array<object>} membros - A lista completa de membros cadastrados.
  * @returns {object} Um objeto no formato justificationData, ex: { "Nome Membro": { participations: X } }.
@@ -20,9 +21,14 @@ export function calculateParticipationData(dias, membros) {
 
     // Itera sobre a escala para contar as participações
     dias.forEach(dia => {
+        if (!dia.selecionados) return;
+        
         dia.selecionados.forEach(membro => {
-            if (justificationData[membro.nome]) {
-                justificationData[membro.nome].participations++;
+            // Verifica se o membro existe e NÃO é uma vaga vazia ou convidado
+            if (membro && membro.nome && !membro.isVaga && !membro.isConvidado) {
+                if (justificationData[membro.nome]) {
+                    justificationData[membro.nome].participations++;
+                }
             }
         });
     });

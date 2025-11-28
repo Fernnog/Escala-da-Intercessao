@@ -347,7 +347,8 @@ export function renderEscalaEmCards(dias) {
     });
 
     // Pós-renderização: Aplica o feedback visual de fadiga
-    aplicarFeedbackFadiga(escalaAtual);
+    aplicarFeedbackFadiga(escalaAtual)
+    aplicarFeedbackFadiga(diasValidos);
 }
 
 // =========================================================

@@ -840,6 +840,9 @@ footer {
     .auth-actions {
         flex-direction: column;
     }
+    /* NOVO: Ajuste para o painel lateral no mobile */
+    .workspace-container { flex-direction: column; }
+    .side-panel { width: 100%; position: static; max-height: none; box-sizing: border-box; }
 }
 
 /* ===== NOVOS ESTILOS PARA ANÁLISE DE ESCALA DETALHADA ===== */
@@ -885,4 +888,154 @@ footer {
    align-items: center;
    flex-wrap: wrap;
    gap: 5px;
+}
+
+/* ================ ESTILOS PARA GESTÃO FLEXÍVEL (SUPLENTES/VAGAS) ================ */
+
+/* 1. Vaga em Aberto (Pendente) */
+.membro-card.vaga-aberta {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 2px dashed #ef9a9a;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: all 0.2s;
+}
+.membro-card.vaga-aberta:hover {
+    background-color: #ffcdd2;
+    transform: scale(1.02);
+}
+
+/* 2. Convidado Externo */
+.membro-card.convidado {
+    background-color: #f3e5f5;
+    color: #6a1b9a;
+    border: 1px solid #e1bee7;
+    position: relative;
+}
+.membro-card.convidado::after {
+    content: ' (Ext)';
+    font-size: 0.7em;
+    opacity: 0.7;
+    margin-left: 4px;
+}
+
+/* 3. Painel Lateral de Suplentes */
+.side-panel {
+    width: 280px;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.05);
+    border: 1px solid #e9ecef;
+    position: sticky;
+    top: 20px; /* Mantém visível ao rolar */
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 2px solid #4682b4;
+    padding-bottom: 8px;
+}
+
+.panel-header h4 {
+    margin: 0;
+    color: #4682b4;
+    font-size: 1.1em;
+}
+
+.close-panel {
+    background: none;
+    border: none;
+    color: #6c757d;
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 0 5px;
+    width: auto;
+    box-shadow: none;
+}
+.close-panel:hover {
+    color: #dc3545;
+    background: none;
+    transform: scale(1.1);
+    box-shadow: none;
+}
+
+.panel-context {
+    font-size: 0.85em;
+    color: #666;
+    background: #f8f9fa;
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    border-left: 3px solid #ff8c00;
+}
+
+/* Input de busca no painel */
+.search-sm input {
+    padding: 6px 10px;
+    font-size: 0.9em;
+    border-radius: 20px;
+}
+.search-sm label {
+    right: 15px;
+    left: auto;
+    color: #adb5bd;
+}
+
+/* Lista de Suplentes */
+.suplentes-list {
+    margin-top: 10px;
+}
+
+.suplentes-list li {
+    background-color: white;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: grab;
+    font-size: 0.9em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.suplentes-list li:hover {
+    background-color: #f1f8ff;
+    border-color: #b8daff;
+    transform: translateX(2px);
+}
+
+.suplentes-list li:active {
+    cursor: grabbing;
+}
+
+/* Badges de contagem */
+.suplente-badge {
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #e9ecef;
+    color: #495057;
+    font-weight: bold;
+}
+
+/* Destaque verde para quem trabalhou pouco (prioridade) */
+.suplente-badge.low-part {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
 }

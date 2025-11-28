@@ -129,7 +129,7 @@
         <ul id="listaRestricoesPermanentes"></ul>
     </div>
 
-    <!-- Aba Geração da Escala (MODIFICADA COM FLEXBOX E SIDEBAR) -->
+    <!-- Aba Geração da Escala -->
     <div id="escala" class="tab" style="display: none;">
         <h2>Geração da Escala</h2>
         <form id="formEscala">
@@ -168,15 +168,22 @@
             <button type="submit" class="secondary-button">Gerar Escala</button>
         </form>
         
-        <!-- NOVO: Container Flex para Escala e Painel Lateral -->
-        <div class="workspace-container" style="display: flex; gap: 20px; align-items: flex-start; position: relative; margin-top: 20px;">
+        <!-- [NOVO] Controles do Modo Foco -->
+        <div id="focus-controls" style="margin: 20px 0 10px 0; text-align: right; display: flex; justify-content: flex-end;">
+            <button id="btn-enter-focus" class="secondary-button" style="background: linear-gradient(45deg, #6f42c1, #5a32a3); display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-expand-arrows-alt"></i> Modo Foco
+            </button>
+        </div>
+
+        <!-- Container Flex para Escala e Painel Lateral -->
+        <div class="workspace-container" style="display: flex; gap: 20px; align-items: flex-start; position: relative; margin-top: 10px;">
             
             <!-- Área Principal da Escala -->
             <div id="resultadoEscalaWrapper" style="flex: 1; min-width: 0;">
                 <div id="resultadoEscala" class="escala-container"></div>
             </div>
 
-            <!-- NOVO: Painel Lateral Inteligente -->
+            <!-- Painel Lateral Inteligente -->
             <aside id="painelSuplentes" class="side-panel" style="display: none;">
                 <div class="panel-header">
                     <h4><i class="fas fa-users"></i> Banco de Suplentes</h4>
@@ -195,7 +202,7 @@
             </aside>
 
         </div>
-        <!-- FIM DO NOVO CONTAINER -->
+        <!-- FIM DO CONTAINER WORKSPACE -->
 
         <div id="balanceIndexContainer" style="display: none; cursor: pointer;"></div>
         
@@ -262,7 +269,7 @@
         </div>
     </div>
 
-    <!-- NOVO: Modal para Adicionar Convidado Externo -->
+    <!-- Modal para Adicionar Convidado Externo -->
     <div id="modalNomeExterno" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <h3>Adicionar Convidado Externo</h3>
@@ -280,7 +287,7 @@
         </div>
     </div>
 
-    <!-- NOVO: Modal de Confirmação de Sobrescrita (Force Override) -->
+    <!-- Modal de Confirmação de Sobrescrita (Force Override) -->
     <div id="modalConfirmacaoForce" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <h3 style="color: #dc3545; background: none; -webkit-text-fill-color: initial;"><i class="fas fa-exclamation-triangle"></i> Restrição Detectada</h3>
@@ -305,6 +312,11 @@
             </div>
         </div>
     </div>
+
+    <!-- [NOVO] Botão Flutuante de SAÍDA do Modo Foco (Inicialmente oculto via CSS) -->
+    <button id="btn-exit-focus" class="focus-exit-btn" title="Sair do Modo Foco (ESC)">
+        <i class="fas fa-compress-arrows-alt"></i> Sair do Modo Foco
+    </button>
 
     <!-- Container para Notificações Toast -->
     <div id="toast-container"></div>

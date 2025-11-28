@@ -1024,8 +1024,7 @@ footer {
 }
 
 /* =========================================================================
-   NOVOS ESTILOS: INDICADORES VISUAIS DE RESTRIÇÃO NA LISTA LATERAL
-   (Prioridade 3 do Plano de Evolução)
+   INDICADORES VISUAIS DE RESTRIÇÃO NA LISTA LATERAL
    ========================================================================= */
 
 /* Indicador visual para itens com restrição: Borda lateral amarela */
@@ -1063,7 +1062,7 @@ footer {
 }
 
 /* ==========================================================================
-   NOVOS ESTILOS: GESTÃO DE VAGAS, CONVIDADOS E FADIGA
+   ESTILOS PARA: GESTÃO DE VAGAS, CONVIDADOS E FADIGA
    ========================================================================== */
 
 /* 1. Vaga em Aberto (Quando o sistema não encontra membro apto) */
@@ -1232,4 +1231,85 @@ footer {
 #resultadoEscalaWrapper {
     flex: 1;
     min-width: 0; /* Impede que flex items estourem */
+}
+
+/* ================ MODO FOCO (CINEMA VIEW) ================ */
+
+/* Botão de saída (inicialmente oculto) */
+.focus-exit-btn {
+    display: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2000;
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 30px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    font-weight: bold;
+    transition: transform 0.3s;
+}
+.focus-exit-btn:hover {
+    transform: scale(1.05);
+    background: #c82333;
+}
+
+/* Quando o Modo Foco está ativo no BODY */
+body.focus-mode {
+    overflow: hidden; /* Impede rolagem da página inteira */
+    background: #f4f6f9; /* Fundo mais neutro */
+    padding: 0;
+}
+
+/* Esconde elementos não essenciais */
+body.focus-mode header,
+body.focus-mode nav,
+body.focus-mode footer,
+body.focus-mode #formEscala,
+body.focus-mode .saved-schedules-container,
+body.focus-mode #btn-exportar-xlsx,
+body.focus-mode #focus-controls,
+body.focus-mode #loaded-schedule-indicator,
+body.focus-mode #escala h2 {
+    display: none !important;
+}
+
+/* Mostra o botão de sair */
+body.focus-mode #btn-exit-focus {
+    display: block;
+}
+
+/* Ajusta o container da aba para tela cheia */
+body.focus-mode #escala.tab {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto; /* Rolagem interna */
+    z-index: 1500;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ajustes específicos para o container de trabalho */
+body.focus-mode .workspace-container {
+    flex: 1; /* Ocupa o espaço disponível */
+    margin-top: 10px;
+}
+
+/* Garante que o painel lateral acompanhe a altura no modo foco */
+body.focus-mode .side-panel {
+    max-height: calc(100vh - 40px);
+    position: sticky;
+    top: 0;
 }

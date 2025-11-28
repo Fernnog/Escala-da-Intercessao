@@ -1039,3 +1039,175 @@ footer {
     color: #155724;
     border: 1px solid #c3e6cb;
 }
+
+/* ==========================================================================
+   NOVOS ESTILOS: GESTÃO DE VAGAS, CONVIDADOS E FADIGA
+   ========================================================================== */
+
+/* 1. Vaga em Aberto (Quando o sistema não encontra membro apto) */
+.membro-card.vaga-aberta {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 2px dashed #ef9a9a;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: all 0.2s ease-in-out;
+}
+
+.membro-card.vaga-aberta:hover {
+    background-color: #ffcdd2;
+    transform: scale(1.02);
+}
+
+/* 2. Convidado Externo (Flag visual roxa) */
+.membro-card.convidado {
+    background-color: #f3e5f5;
+    color: #6a1b9a;
+    border: 1px solid #e1bee7;
+}
+
+.membro-card.convidado::after {
+    content: ' (Ext)';
+    font-size: 0.75em;
+    opacity: 0.7;
+    margin-left: 4px;
+}
+
+/* 3. Alerta de Fadiga (Sequência de 3 Turnos) */
+.membro-card.fadiga-alert {
+    border: 2px solid #ff9800 !important; /* Importante para sobrepor a cor do turno */
+    background-color: #fff3e0;
+    color: #e65100;
+    position: relative;
+    box-shadow: 0 0 5px rgba(255, 152, 0, 0.4);
+}
+
+/* Ícone de bateria fraca (Font Awesome) antes do nome */
+.membro-card.fadiga-alert::before {
+    content: '\f244'; /* Código unicode para fa-battery-empty */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    margin-right: 6px;
+    color: #ef6c00;
+}
+
+/* Tooltip explicativo ao passar o mouse */
+.membro-card.fadiga-alert:hover::after {
+    content: '⚠️ Alerta: 3º turno consecutivo!';
+    position: absolute;
+    bottom: 105%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 100;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* 4. Painel Lateral de Suplentes */
+.side-panel {
+    width: 280px;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+    border: 1px solid #ddd;
+    position: sticky;
+    top: 20px;
+    max-height: 80vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 900;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+    margin-bottom: 5px;
+}
+
+.panel-header h4 {
+    margin: 0;
+    color: #4682b4;
+    font-size: 1.1em;
+}
+
+.close-panel {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: #999;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+}
+
+.close-panel:hover {
+    color: #dc3545;
+    background: none;
+    box-shadow: none;
+    transform: none;
+}
+
+.suplentes-list li {
+    padding: 10px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: grab;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9f9f9;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    transition: background 0.2s;
+}
+
+.suplentes-list li:hover {
+    background-color: #e3f2fd;
+}
+
+.suplentes-list li:active {
+    cursor: grabbing;
+}
+
+.suplente-badge {
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #e9ecef;
+    color: #495057;
+    font-weight: bold;
+}
+
+.suplente-badge.low-part {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+/* Ajuste no container principal para suportar o painel lateral */
+.workspace-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    position: relative;
+}
+
+#resultadoEscalaWrapper {
+    flex: 1;
+    min-width: 0; /* Impede que flex items estourem */
+}

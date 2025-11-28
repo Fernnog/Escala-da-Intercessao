@@ -72,7 +72,12 @@ function analisarConcentracao(diasGerados) {
                 membrosDisponiveisCount++;
             }
 
-            const participacoes = diasGerados.filter(d => d.tipo === turno && d.selecionados.some(s => s.nome === membro.nome)).length;
+            // ATUALIZADO: Ignora nulos/vagas ao contar participações
+            const participacoes = diasGerados.filter(d => 
+                d.tipo === turno && 
+                d.selecionados.some(s => s && s.nome === membro.nome && !s.isVaga)
+            ).length;
+            
             totalParticipacoesNoTurno += participacoes;
 
             membrosDoTurno.push({
@@ -116,6 +121,9 @@ export function setupGeradorEscala() {
         const quantidadeCultos = parseInt(document.getElementById('quantidadeCultos').value);
         const mes = parseInt(document.getElementById('mesEscala').value);
         const ano = parseInt(document.getElementById('anoEscala').value);
+        
+        // Configuração de limite de discrepância
+        const LIMITE_DISCREPANCIA = 2; 
 
         const justificationData = {};
         membros.forEach(m => {
@@ -143,37 +151,78 @@ export function setupGeradorEscala() {
         }
 
         dias.forEach(dia => {
+            // 1. Filtro Inicial: Disponibilidade (Suspensões e Restrições)
             const membrosDisponiveis = membros.filter(m => {
                 const status = checkMemberAvailability(m, dia.tipo, dia.data);
                 return status.type === 'disponivel';
             });
             
+            // 2. Filtro de Justiça: Limite de Discrepância
+            // Encontra o mínimo de participações atual entre todos os membros
+            const minParticipacoes = Math.min(...Object.values(justificationData).map(d => d.participations));
+            
+            // Filtra mantendo apenas quem não estourou o limite em relação ao mínimo
+            const membrosElegiveis = membrosDisponiveis.filter(m => {
+                const parts = justificationData[m.nome].participations;
+                return (parts - minParticipacoes) <= LIMITE_DISCREPANCIA;
+            });
+
             const qtdNecessaria = (dia.tipo === 'Oração no WhatsApp' || dia.tipo === 'Sábado') ? 1 : quantidadeCultos;
             
-            if (membrosDisponiveis.length >= qtdNecessaria) {
-                let selecionados = [];
+            let selecionados = [];
+
+            // 3. Tentativa de Seleção com Membros Elegíveis
+            if (membrosElegiveis.length >= qtdNecessaria) {
                 if (qtdNecessaria === 1) {
-                    selecionados = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, justificationData);
+                    selecionados = selecionarMembrosComAleatoriedade(membrosElegiveis, 1, justificationData);
                 } else {
-                    const primeiro = selecionarMembrosComAleatoriedade(membrosDisponiveis, 1, justificationData)[0];
+                    const primeiro = selecionarMembrosComAleatoriedade(membrosElegiveis, 1, justificationData)[0];
                     if (primeiro) {
-                        const poolParaSegundo = membrosDisponiveis.filter(m => m.nome !== primeiro.nome);
+                        const poolParaSegundo = membrosElegiveis.filter(m => m.nome !== primeiro.nome);
                         
-                        // LÓGICA ATUALIZADA: USA A FUNÇÃO HELPER saoCompativeis
-                        const membrosCompatíveis = poolParaSegundo.filter(m => saoCompativeis(m, primeiro));
+                        // Busca compatibilidade estrita dentro do pool ELEGÍVEL
+                        const membrosCompativeis = poolParaSegundo.filter(m => saoCompativeis(m, primeiro));
                         
-                        const poolFinal = membrosCompatíveis.length > 0 ? membrosCompatíveis : poolParaSegundo;
-                        const segundo = selecionarMembrosComAleatoriedade(poolFinal, 1, justificationData)[0];
-                        
-                        if (segundo) selecionados = [primeiro, segundo];
+                        // Se houver compatíveis elegíveis, usa-os. Caso contrário, não força (gera vaga vazia).
+                        if (membrosCompativeis.length > 0) {
+                            const segundo = selecionarMembrosComAleatoriedade(membrosCompativeis, 1, justificationData)[0];
+                            if (segundo) selecionados = [primeiro, segundo];
+                        } else {
+                            // Se não encontrou par compatível DENTRO das regras de discrepância, 
+                            // a decisão é: escala só um e deixa o outro buraco, ou escala dupla inválida?
+                            // Seguindo o pedido: respeitar regras. Então escala apenas o primeiro.
+                            selecionados = [primeiro];
+                        }
                     }
                 }
-
-                if (selecionados.length === qtdNecessaria) {
-                    dia.selecionados = selecionados;
-                    selecionados.forEach(m => { justificationData[m.nome].participations++; });
+            } else {
+                // Cenário: Não há membros ELEGÍVEIS suficientes (disponíveis + discrepância ok)
+                // Tenta aproveitar os que existem, o resto vira vaga vazia.
+                if (membrosElegiveis.length > 0) {
+                    selecionados = selecionarMembrosComAleatoriedade(membrosElegiveis, membrosElegiveis.length, justificationData);
                 }
+                // Se membrosElegiveis for 0, selecionados continua vazio.
             }
+
+            // 4. Preenchimento com Vagas em Aberto (Buracos)
+            // Remove possíveis nulos e preenche até a quantidade necessária com marcador de Vaga
+            selecionados = selecionados.filter(s => s && s.nome);
+            
+            while (selecionados.length < qtdNecessaria) {
+                selecionados.push({ 
+                    nome: null, 
+                    isVaga: true, 
+                    genero: 'X' // Genero neutro para não quebrar ícones na UI antes da atualização
+                });
+            }
+
+            // Atribui à escala e atualiza contagem (apenas para membros reais)
+            dia.selecionados = selecionados;
+            selecionados.forEach(m => { 
+                if (m.nome && !m.isVaga && !m.isConvidado) {
+                    justificationData[m.nome].participations++; 
+                }
+            });
         });
 
         renderEscalaEmCards(dias);

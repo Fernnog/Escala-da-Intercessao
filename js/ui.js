@@ -187,6 +187,16 @@ export function toggleConjuge() {
     }
 }
 
+// === NOVO: Função para alternar o Modo Foco ===
+export function toggleFocusMode() {
+    document.body.classList.toggle('focus-mode');
+    
+    const isFocus = document.body.classList.contains('focus-mode');
+    if (isFocus) {
+        showToast('Modo Foco ativado. Pressione ESC para sair.', 'info');
+    }
+}
+
 export function setupUiListeners() {
     const conjugeCheck = document.getElementById('conjugeParticipa');
     if(conjugeCheck) conjugeCheck.addEventListener('change', toggleConjuge);
@@ -217,6 +227,24 @@ export function setupUiListeners() {
     if(btnConfirmExterno) {
         btnConfirmExterno.addEventListener('click', window.confirmarAdicaoExterno);
     }
+
+    // === NOVO: Listeners para o Modo Foco ===
+    const btnEnterFocus = document.getElementById('btn-enter-focus');
+    const btnExitFocus = document.getElementById('btn-exit-focus');
+
+    if (btnEnterFocus) {
+        btnEnterFocus.addEventListener('click', toggleFocusMode);
+    }
+    if (btnExitFocus) {
+        btnExitFocus.addEventListener('click', toggleFocusMode);
+    }
+
+    // Listener para tecla ESC para sair do Modo Foco
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.body.classList.contains('focus-mode')) {
+            toggleFocusMode();
+        }
+    });
 }
 
 export function showToast(message, type = 'success') {

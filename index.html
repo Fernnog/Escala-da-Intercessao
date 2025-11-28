@@ -24,10 +24,9 @@
         <button id="nav-escala"><i class="fas fa-calendar-check"></i> Geração da Escala</button>
     </nav>
 
-    <!-- Aba de Autenticação (MODIFICADA) -->
+    <!-- Aba de Autenticação -->
     <div id="auth" class="tab">
         <h2>Autenticação</h2>
-        <!-- Formulário Unificado -->
         <form id="formAuth" onsubmit="event.preventDefault();">
             <div class="input-group">
                 <input type="email" id="emailAuth" required placeholder=" ">
@@ -130,7 +129,7 @@
         <ul id="listaRestricoesPermanentes"></ul>
     </div>
 
-    <!-- Aba Geração da Escala (MODIFICADA) -->
+    <!-- Aba Geração da Escala (MODIFICADA COM FLEXBOX E SIDEBAR) -->
     <div id="escala" class="tab" style="display: none;">
         <h2>Geração da Escala</h2>
         <form id="formEscala">
@@ -169,15 +168,41 @@
             <button type="submit" class="secondary-button">Gerar Escala</button>
         </form>
         
-        <div id="resultadoEscala" class="escala-container"></div>
+        <!-- NOVO: Container Flex para Escala e Painel Lateral -->
+        <div class="workspace-container" style="display: flex; gap: 20px; align-items: flex-start; position: relative; margin-top: 20px;">
+            
+            <!-- Área Principal da Escala -->
+            <div id="resultadoEscalaWrapper" style="flex: 1; min-width: 0;">
+                <div id="resultadoEscala" class="escala-container"></div>
+            </div>
+
+            <!-- NOVO: Painel Lateral Inteligente -->
+            <aside id="painelSuplentes" class="side-panel" style="display: none;">
+                <div class="panel-header">
+                    <h4><i class="fas fa-users"></i> Banco de Suplentes</h4>
+                    <button id="btn-fechar-painel" class="close-panel" title="Fechar painel">&times;</button>
+                </div>
+                <div class="panel-context">
+                    <p id="painel-contexto">Selecione um dia na escala...</p>
+                </div>
+                <div class="input-group search-sm" style="margin-top: 10px; margin-bottom: 10px;">
+                    <input type="text" id="buscaSuplente" placeholder="Filtrar por nome...">
+                    <label for="buscaSuplente"><i class="fas fa-search"></i></label>
+                </div>
+                <ul id="listaSuplentes" class="suplentes-list">
+                    <!-- Preenchido via JS -->
+                </ul>
+            </aside>
+
+        </div>
+        <!-- FIM DO NOVO CONTAINER -->
+
         <div id="balanceIndexContainer" style="display: none; cursor: pointer;"></div>
         
-        <!-- NOVA POSIÇÃO DOS FILTROS -->
         <div id="escala-filtros" class="escala-filtros-container"></div>
         
         <div id="diagnosticReportContainer" style="display: none;"></div>
 
-        <!-- NOVO: Indicador de Escala Carregada -->
         <div id="loaded-schedule-indicator" style="display: none; align-items: center; justify-content: space-between; background-color: #e8f0ff; padding: 10px 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #4682b4;">
             <span>Visualizando escala salva: <strong id="loaded-schedule-name"></strong></span>
             <button id="btn-clear-loaded-schedule" style="background: none; border: none; font-size: 1.2em; cursor: pointer; color: #dc3545;" title="Limpar visualização da escala">&times;</button>
@@ -237,6 +262,37 @@
         </div>
     </div>
 
+    <!-- NOVO: Modal para Adicionar Convidado Externo -->
+    <div id="modalNomeExterno" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>Adicionar Convidado Externo</h3>
+            <input type="hidden" id="externoDiaId">
+            <input type="hidden" id="externoIndiceVaga">
+            <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">Este participante será marcado como "Convidado" e não afetará as estatísticas de equilíbrio.</p>
+            <div class="input-group">
+                <input type="text" id="inputNomeExterno" required placeholder="Ex: Pr. João (Visitante)">
+                <label for="inputNomeExterno">Nome do Convidado</label>
+            </div>
+            <div class="modal-actions">
+                <button id="btn-confirmar-externo" class="secondary-button">Adicionar na Escala</button>
+                <button onclick="document.getElementById('modalNomeExterno').style.display='none'">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOVO: Modal de Confirmação de Sobrescrita (Force Override) -->
+    <div id="modalConfirmacaoForce" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 style="color: #dc3545; background: none; -webkit-text-fill-color: initial;"><i class="fas fa-exclamation-triangle"></i> Restrição Detectada</h3>
+            <div id="msgRestricaoForce" style="margin: 15px 0; background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; border-radius: 4px;"></div>
+            <p>Deseja ignorar as regras acima e escalar este membro mesmo assim?</p>
+            <div class="modal-actions">
+                <button id="btn-force-sim" class="secondary-button" style="background: linear-gradient(45deg, #dc3545, #c82333);">Sim, Forçar Escala</button>
+                <button onclick="document.getElementById('modalConfirmacaoForce').style.display='none'">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de Análise de Concentração -->
     <div id="analiseConcentracaoModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
@@ -260,7 +316,9 @@
             <span><i class="fas fa-check-circle" style="color: #28a745;"></i> Disponível</span> |
             <span style="margin-left: 10px;">⛔ Restrição Permanente</span> |
             <span style="margin-left: 10px;">🚫 Restrição Temporária</span> |
-            <span style="margin-left: 10px;"><i class="fas fa-pause-circle" style="color: #ffc107;"></i> Suspenso</span>
+            <span style="margin-left: 10px;"><i class="fas fa-pause-circle" style="color: #ffc107;"></i> Suspenso</span> |
+            <span style="margin-left: 10px; color: #c62828;"><i class="fas fa-plus-circle"></i> Vaga</span> |
+            <span style="margin-left: 10px; color: #6a1b9a;">(Ext) Convidado</span>
         </div>
     </footer>
 

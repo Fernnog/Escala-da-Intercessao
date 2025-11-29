@@ -70,6 +70,3 @@ O algoritmo segue uma hierarquia estrita para garantir a saúde da equipe:
 ---
 
 *Desenvolvido para servir a quem serve.*
-
-// ... (RESTANTE DO ARQUIVO JS MANTIDO) ...
-```

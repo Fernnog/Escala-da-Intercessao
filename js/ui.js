@@ -454,8 +454,13 @@ export function renderEscalaEmCards(dias) {
                                         ${m.nome}
                                     </div>`;
                         }
-                        // Renderiza Membro Padrão
-                        return `<div class="membro-card" draggable="true" data-nome="${m.nome}">${m.nome}</div>`;
+                        
+                        // Renderiza Membro Padrão com Feedback de Cônjuge (Prioridade 1)
+                        const conjugeIcon = m.conjuge ? `<i class="fas fa-ring spouse-icon" title="Cônjuge: ${m.conjuge}"></i>` : '';
+
+                        return `<div class="membro-card" draggable="true" data-nome="${m.nome}">
+                                    ${conjugeIcon}${m.nome}
+                                </div>`;
                     }).join('')}
                 </div>
             </div>`;
@@ -728,7 +733,7 @@ window.confirmarAdicaoExterno = function() {
         // ATUALIZA PAINEL LATERAL (Sincroniza os contadores)
         if (diaSelecionadoId) window.atualizarPainelSuplentes(diaSelecionadoId);
 
-        // RECONECTA EVENTOS DE DRAG & DROP APÓS ATUALIZAÇÃO
+        // RECONECTA EVENTOS DE DRAG & DROP APÓS ATUALIZAÇÃO DOM
         configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
 
         document.getElementById('modalNomeExterno').style.display = 'none';

@@ -7,27 +7,87 @@ body {
     color: #1a3850;
 }
 
-/* Estilo do cabeçalho com logotipo e título */
+/* ==========================================================================
+   NOVO HEADER (Prioridade 1: Redesign e Autenticação Visível)
+   ========================================================================== */
 header {
-    text-align: center;
+    background: linear-gradient(to right, #fff9f2, #ffffff);
+    padding: 10px 20px;
     margin-bottom: 20px;
-    background: linear-gradient(rgba(255, 140, 0, 0.2), transparent);
-    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    border-bottom: 3px solid #ff8c00;
+    
+    /* Layout Flex para alinhar Marca à esquerda e User à direita */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+/* Área da Marca (Logo + Título) */
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
 .logo {
-    max-width: 200px;
+    max-width: 50px; /* Reduzido significativamente */
     height: auto;
     display: block;
-    margin: 0 auto;
 }
 
 header h2 {
     color: #ff8c00;
-    margin-top: 10px;
+    margin: 0;
     font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    font-size: 1.5rem;
+    text-shadow: none; /* Removido para visual mais limpo */
+    line-height: 1.2;
 }
+
+/* Área do Usuário (E-mail + Botão Sair) */
+.header-auth {
+    display: flex; /* Controlado via JS (block/none), mas flex ajuda no alinhamento interno */
+    align-items: center;
+    gap: 15px;
+    background-color: #f1f8ff;
+    padding: 5px 15px;
+    border-radius: 20px;
+    border: 1px solid #b8daff;
+}
+
+.header-user-email {
+    font-size: 0.9em;
+    color: #1a3850;
+    font-weight: 500;
+}
+
+.header-logout-btn {
+    background: transparent;
+    color: #dc3545;
+    border: 1px solid #dc3545;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: bold;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.header-logout-btn:hover {
+    background-color: #dc3545;
+    color: white;
+    box-shadow: none;
+    transform: none;
+}
+
+/* ========================================================================== */
 
 /* Navegação */
 nav {
@@ -111,7 +171,7 @@ form {
     width: 100%;
     font-size: 16px;
     background-color: #fff;
-    box-sizing: border-box; /* Garante consistência de tamanho */
+    box-sizing: border-box; 
     transition: border-color 0.3s, box-shadow 0.3s;
 }
 
@@ -139,7 +199,7 @@ form {
 .input-group input:focus + label,
 .input-group input:not(:placeholder-shown) + label,
 .input-group select:focus + label,
-.input-group select:valid + label { /* Garante que o label suba quando uma opção é selecionada */
+.input-group select:valid + label { 
     top: -10px;
     font-size: 12px;
     color: #ff8c00;
@@ -385,6 +445,9 @@ button:active {
     flex-grow: 1;
 }
 
+/* ==========================================================================
+   ATUALIZAÇÃO DE PRIORIDADE 2: BOTÃO REMOVER (X)
+   ========================================================================== */
 /* Estilo para o nome de cada membro dentro do card */
 .membro-card {
     background-color: #f1f8ff;
@@ -397,11 +460,51 @@ button:active {
     flex-grow: 1;
     cursor: grab; /* Indica que o item é arrastável */
     transition: all 0.2s ease-in-out;
+    
+    /* Necessário para posicionar o botão X */
+    position: relative; 
 }
 
 .membro-card:active {
     cursor: grabbing;
 }
+
+/* Botão de Remover Membro (X no card) - Oculto por padrão, visível no hover */
+.card-remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #fff;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8em;
+    opacity: 0; /* Aparece só no hover */
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 5;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-remove-btn i {
+    pointer-events: none; /* Garante que o clique vá para o botão */
+}
+
+.membro-card:hover .card-remove-btn {
+    opacity: 1;
+}
+
+.card-remove-btn:hover {
+    background-color: #dc3545;
+    color: white;
+    transform: scale(1.1);
+}
+/* ========================================================================== */
 
 /* NOVO: Ícone de Cônjuge no Card da Escala */
 .spouse-icon {
@@ -838,6 +941,11 @@ footer {
 
 /* Responsividade */
 @media (max-width: 768px) {
+    /* Novo ajuste para o header responsivo */
+    header { flex-direction: column; align-items: stretch; }
+    .header-brand { justify-content: center; margin-bottom: 10px; }
+    .header-auth { justify-content: center; }
+    
     nav { flex-direction: column; padding: 10px; }
     nav button { width: 100%; margin: 8px 0; padding: 12px 20px; }
     .tab { padding: 15px; border-left-width: 3px; }
@@ -936,6 +1044,10 @@ footer {
     font-size: 0.7em;
     opacity: 0.7;
     margin-left: 4px;
+}
+/* ATUALIZAÇÃO PRIORIDADE 2: Ícone extra para convidado */
+.membro-card.convidado i {
+    margin-right: 5px;
 }
 
 /* 3. Painel Lateral de Suplentes */
@@ -1045,6 +1157,15 @@ footer {
 .suplente-item.com-restricao {
     border-left: 4px solid #ffc107 !important;
     background-color: #fffbf2; /* Fundo sutilmente amarelado */
+}
+
+/* ATUALIZAÇÃO PRIORIDADE 3: Container para múltiplos ícones de status */
+.suplente-status-icons {
+    display: inline-flex;
+    gap: 5px;
+    margin-right: 6px;
+    font-size: 0.85em;
+    vertical-align: middle;
 }
 
 /* Reforço para o cursor, garantindo que o usuário saiba que pode arrastar */

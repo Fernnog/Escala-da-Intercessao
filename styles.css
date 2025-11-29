@@ -41,24 +41,33 @@ header {
     gap: 15px;
 }
 
+/* 1. Definição Base (Mobile/Celular) */
 .logo-responsive {
-    max-width: 70px; /* Aumentado para maior destaque */
-    height: auto;
-    display: block;
-    transition: transform 0.3s ease;
+    height: 60px; /* Tamanho confortável para telas de toque */
+    width: auto;  /* Mantém a proporção correta */
+    transition: transform 0.3s;
+    object-fit: contain;
 }
 
+/* 2. Definição para Desktop (Computadores/Tablets) */
+@media (min-width: 768px) {
+    .logo-responsive {
+        /* AQUI ESTÁ A MUDANÇA: Aumentado para 100px conforme sua marcação */
+        height: 100px; 
+    }
+}
+
+/* Efeito de Hover mantido */
 .brand-area:hover .logo-responsive {
     transform: scale(1.05);
 }
 
+/* Ajuste do Título para acompanhar o logo maior */
 header h2 {
-    color: #ff8c00;
+    font-size: 1.8rem; /* Aumentado levemente (era 1.6rem) para não "sumir" ao lado do logo grande */
     margin: 0;
-    font-weight: 800; /* Mais peso para o título */
-    font-size: 1.6rem;
+    color: #ff8c00;
     line-height: 1.2;
-    text-transform: uppercase;
 }
 
 /* 

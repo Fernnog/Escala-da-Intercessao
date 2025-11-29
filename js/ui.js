@@ -422,7 +422,7 @@ export function renderAnaliseConcentracao(filtro = 'all') {
     container.style.display = contentHTML ? 'block' : 'none';
 }
 
-// === FUNÇÃO CRUCIAL: RENDERIZAR CARDS COM SUPORTE A VAGAS E CONVIDADOS ===
+// === FUNÇÃO CRUCIAL: RENDERIZAR CARDS COM SUPORTE A VAGAS, CONVIDADOS E BOTÃO REMOVER ===
 export function renderEscalaEmCards(dias) {
     const diasValidos = dias.filter(dia => dia && dia.data instanceof Date);
     escalaAtual = diasValidos;
@@ -448,10 +448,17 @@ export function renderEscalaEmCards(dias) {
                                         <i class="fas fa-plus-circle"></i> Vaga Aberta
                                     </div>`;
                         }
-                        // Renderiza Convidado (Roxo)
+                        
+                        // Botão de remover membro (X)
+                        const removeBtn = `<button class="card-remove-btn" onclick="event.stopPropagation(); window.limparVaga('${dia.id}', ${idx})" title="Remover da escala">
+                                                <i class="fas fa-times"></i>
+                                           </button>`;
+
+                        // Renderiza Convidado (Roxo) - PRIORIDADE 2
                         if (m.isConvidado) {
                             return `<div class="membro-card convidado" draggable="true" data-nome="${m.nome}" data-externo="true">
-                                        ${m.nome}
+                                        <i class="fas fa-user-tag" style="color: #6a1b9a; margin-right:5px;"></i> ${m.nome}
+                                        ${removeBtn}
                                     </div>`;
                         }
                         
@@ -460,6 +467,7 @@ export function renderEscalaEmCards(dias) {
 
                         return `<div class="membro-card" draggable="true" data-nome="${m.nome}">
                                     ${conjugeIcon}${m.nome}
+                                    ${removeBtn}
                                 </div>`;
                     }).join('')}
                 </div>
@@ -665,25 +673,49 @@ window.atualizarPainelSuplentes = function(cardId) {
     if(lista) {
         lista.innerHTML = sugestoes.map(m => {
             const parts = justificationDataAtual[m.nome] ? justificationDataAtual[m.nome].participations : 0;
-            const status = checkMemberAvailability(m, dia.tipo, dia.data);
-            const isAvailable = status.type === 'disponivel';
             
-            // Define ícone e classe baseados na disponibilidade
-            let icon = '<i class="fas fa-check-circle" style="color:#28a745"></i>';
-            let restricaoClass = '';
-            let title = 'Disponível';
+            // Lógica de Ícones EXATOS conforme legenda do rodapé (PRIORIDADE 3)
+            const iconesStatus = [];
+            let isRestrito = false;
 
-            if (!isAvailable) {
-                restricaoClass = 'com-restricao';
-                icon = '<i class="fas fa-exclamation-triangle" style="color:#ffc107"></i>';
-                if (status.type === 'suspenso') title = 'Suspenso';
-                else if (status.type === 'permanente') title = 'Restrição Permanente';
-                else if (status.type === 'temporaria') title = 'Restrição Temporária (Férias)';
+            // 1. Suspensão
+            let suspKey = 'cultos'; 
+            if (dia.tipo === 'Sábado') suspKey = 'sabado';
+            else if (dia.tipo === 'Oração no WhatsApp') suspKey = 'whatsapp';
+            
+            if (m.suspensao && m.suspensao[suspKey]) {
+                iconesStatus.push('<i class="fas fa-pause-circle" style="color: #ffc107;" title="Suspenso"></i>');
+                isRestrito = true;
+            }
+
+            // 2. Restrição Permanente
+            if (todasAsRestricoesPerm.some(r => r.membro === m.nome && r.diaSemana === dia.tipo)) {
+                iconesStatus.push('<span title="Restrição Permanente">⛔</span>');
+                isRestrito = true;
+            }
+
+            // 3. Restrição Temporária (Férias)
+            const diaAlvo = new Date(dia.data); diaAlvo.setHours(0,0,0,0);
+            if (todasAsRestricoes.some(r => {
+                const inicio = new Date(r.inicio); inicio.setHours(0,0,0,0);
+                const fim = new Date(r.fim); fim.setHours(0,0,0,0);
+                return r.membro === m.nome && diaAlvo >= inicio && diaAlvo <= fim;
+            })) {
+                iconesStatus.push('<span title="Restrição Temporária">🚫</span>');
+                isRestrito = true;
+            }
+
+            // Se não tiver nenhuma restrição, ícone verde
+            if (iconesStatus.length === 0) {
+                iconesStatus.push('<i class="fas fa-check-circle" style="color:#28a745"></i>');
             }
             
             return `
-                <li draggable="true" class="suplente-item ${restricaoClass}" data-nome="${m.nome}" title="${title}">
-                    <span>${icon} ${m.nome}</span>
+                <li draggable="true" class="suplente-item ${isRestrito ? 'com-restricao' : ''}" data-nome="${m.nome}" title="${isRestrito ? 'Possui Restrições' : 'Disponível'}">
+                    <span>
+                        <span class="suplente-status-icons">${iconesStatus.join(' ')}</span>
+                        ${m.nome}
+                    </span>
                     <span class="suplente-badge ${parts <= 1 ? 'low-part' : ''}">${parts}x</span>
                 </li>
             `;
@@ -703,6 +735,38 @@ function setupDragParaSuplentes() {
         });
     });
 }
+
+// === NOVO: Função para limpar uma vaga (Transformar membro em Vaga Aberta) - PRIORIDADE 2 ===
+window.limparVaga = function(diaId, index) {
+    if (!confirm("Tem certeza que deseja remover este membro da escala?")) return;
+
+    const dia = escalaAtual.find(d => d.id === diaId);
+    if (!dia || !dia.selecionados[index]) return;
+
+    const membroRemovido = dia.selecionados[index];
+
+    // Se for um membro oficial (não convidado e não vaga), decrementa estatística
+    if (membroRemovido.nome && !membroRemovido.isConvidado && !membroRemovido.isVaga) {
+        if (justificationDataAtual[membroRemovido.nome]) {
+            justificationDataAtual[membroRemovido.nome].participations--;
+        }
+    }
+
+    // Reseta o slot para Vaga Aberta
+    dia.selecionados[index] = { nome: null, isVaga: true, genero: null };
+
+    // Re-renderiza a UI
+    renderEscalaEmCards(escalaAtual);
+    exibirIndiceEquilibrio(justificationDataAtual);
+    
+    // Atualiza estatísticas do painel lateral se estiver aberto
+    if (diaSelecionadoId) window.atualizarPainelSuplentes(diaSelecionadoId);
+
+    // Re-configura Drag & Drop para os novos elementos DOM
+    configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
+
+    showToast('Membro removido da escala.', 'warning');
+};
 
 // Modais Globais
 window.abrirModalConvidado = function(diaId, indiceVaga) {

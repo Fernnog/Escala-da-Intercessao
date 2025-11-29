@@ -11,10 +11,28 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
+    <!-- 
+      ALTERAÇÃO PRIORIDADE 1: 
+      Cabeçalho reestruturado para layout horizontal e área de usuário.
+    -->
     <header>
-        <img src="image/logo.png" alt="Logotipo Escala de Intercessores" class="logo">
-        <h2>GERADOR DE ESCALA DA INTERCESSÃO</h2>
+        <div class="header-content">
+            <div class="brand-area">
+                <!-- Adicionada classe 'logo-small' para controle via CSS -->
+                <img src="image/logo.png" alt="Logotipo Escala de Intercessores" class="logo logo-small">
+                <h2>GERADOR DE ESCALA</h2>
+            </div>
+            
+            <!-- Nova área de usuário (Exibida apenas quando logado) -->
+            <div id="user-info-display" class="user-area" style="display: none;">
+                <span id="user-email-span"></span>
+                <button id="header-logout-btn" class="logout-btn" title="Sair da conta">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+            </div>
+        </div>
     </header>
+
     <nav>
         <button id="nav-auth"><i class="fas fa-lock"></i> Autenticação</button>
         <button id="nav-cadastro"><i class="fas fa-user-plus"></i> Cadastro de Membros</button>
@@ -41,7 +59,7 @@
                 <button type="button" id="btnLogin" class="secondary-button">Fazer Login</button>
             </div>
         </form>
-        <button id="logout" style="display:none;">Logout</button>
+        <!-- Botão antigo de logout removido daqui, pois agora está no header -->
     </div>
 
     <!-- Aba Cadastro de Membros -->
@@ -168,7 +186,7 @@
             <button type="submit" class="secondary-button">Gerar Escala</button>
         </form>
         
-        <!-- [NOVO] Controles do Modo Foco -->
+        <!-- Controles do Modo Foco -->
         <div id="focus-controls" style="margin: 20px 0 10px 0; text-align: right; display: flex; justify-content: flex-end;">
             <button id="btn-enter-focus" class="secondary-button" style="background: linear-gradient(45deg, #6f42c1, #5a32a3); display: flex; align-items: center; gap: 8px;">
                 <i class="fas fa-expand-arrows-alt"></i> Modo Foco
@@ -313,7 +331,7 @@
         </div>
     </div>
 
-    <!-- [NOVO] Botão Flutuante de SAÍDA do Modo Foco (Inicialmente oculto via CSS) -->
+    <!-- Botão Flutuante de SAÍDA do Modo Foco -->
     <button id="btn-exit-focus" class="focus-exit-btn" title="Sair do Modo Foco (ESC)">
         <i class="fas fa-compress-arrows-alt"></i> Sair do Modo Foco
     </button>

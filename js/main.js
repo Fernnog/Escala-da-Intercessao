@@ -61,7 +61,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupEventListeners() {
         
         // --- Listeners da Barra de Navegação ---
-        document.getElementById('nav-auth').addEventListener('click', () => showTab('auth'));
+        /* 
+           ATUALIZAÇÃO (Prioridade 3):
+           O listener do botão 'nav-auth' foi removido aqui, pois o botão 
+           foi retirado do HTML para otimizar o fluxo de autenticação.
+        */
         document.getElementById('nav-cadastro').addEventListener('click', () => showTab('cadastro'));
         document.getElementById('nav-disponibilidade').addEventListener('click', () => {
             showTab('disponibilidade');
@@ -73,7 +77,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Listeners dos Botões de Ação Globais ---
         document.getElementById('btn-exportar-xlsx').addEventListener('click', exportarEscalaXLSX);
-        document.getElementById('logout').addEventListener('click', () => handleLogout(auth));
+        
+        // Nota: O listener do botão de logout do header é gerenciado em auth.js, 
+        // mas mantemos este aqui caso exista um botão de logout secundário (legado) na UI.
+        const logoutBtn = document.getElementById('logout');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => handleLogout(auth));
+        }
 
         // --- Listeners do Modal de Suspensão ---
         document.getElementById('btn-salvar-suspensao').addEventListener('click', () => salvarSuspensao(auth, database));

@@ -63,16 +63,17 @@ export function checkMemberAvailability(membro, turno, data) {
 }
 
 /**
- * Verifica se dois membros são compatíveis para formar uma dupla (mesmo gênero ou cônjuges).
+ * Verifica se dois membros são compatíveis para formar uma dupla.
+ * ATUALIZAÇÃO: A lógica de cônjuge foi removida para impedir o agrupamento automático.
+ * Agora, apenas a compatibilidade de gênero é considerada estrita para geração.
+ * 
  * @param {object} membroA - O primeiro membro.
  * @param {object} membroB - O segundo membro.
  * @returns {boolean}
  */
 export function saoCompativeis(membroA, membroB) {
     if (!membroA || !membroB) return false;
-    return (
-        membroA.genero === membroB.genero ||
-        membroA.conjuge === membroB.nome ||
-        membroB.conjuge === membroA.nome
-    );
+    
+    // Regra estrita: Apenas membros do mesmo gênero podem formar dupla automaticamente.
+    return membroA.genero === membroB.genero;
 }

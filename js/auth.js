@@ -62,22 +62,24 @@ export function setupAuthListeners(auth, onLoginSuccess) {
 
     // Listener de Estado de Autenticação (o ponto central de controle)
     auth.onAuthStateChanged((user) => {
-        // Elementos do novo Header
+        // PRIORIDADE 1 & 2: Elementos atualizados para refletir o novo HTML e lógica de redirecionamento
         const userInfoDisplay = document.getElementById('user-info-display');
-        const userEmailSpan = document.getElementById('user-email-span');
+        const userEmailBadge = document.getElementById('user-email-badge'); // ID novo para o estilo de badge
         
         if (user) {
             // Usuário está logado
             if (userInfoDisplay) userInfoDisplay.style.display = 'flex';
-            if (userEmailSpan) userEmailSpan.textContent = user.email;
+            if (userEmailBadge) userEmailBadge.textContent = user.email;
             
             showTab('cadastro');
             onLoginSuccess(); // Dispara o carregamento de dados e atualização da UI
         } else {
             // Usuário está deslogado
             if (userInfoDisplay) userInfoDisplay.style.display = 'none';
-            if (userEmailSpan) userEmailSpan.textContent = '';
+            if (userEmailBadge) userEmailBadge.textContent = '';
             
+            // PRIORIDADE 2: Redirecionamento forçado
+            // Como removemos o botão de navegação, precisamos garantir que o usuário vá para a tela de login
             showTab('auth');
         }
     });
@@ -90,7 +92,7 @@ export function setupAuthListeners(auth, onLoginSuccess) {
 export function handleLogout(auth) {
     auth.signOut().then(() => {
         showToast('Logout bem-sucedido!', 'success');
-        // O onAuthStateChanged cuidará de limpar a UI do header
+        // O onAuthStateChanged cuidará de limpar a UI do header e redirecionar
     }).catch((error) => {
         showToast('Erro ao fazer logout: ' + error.message, 'error');
     });

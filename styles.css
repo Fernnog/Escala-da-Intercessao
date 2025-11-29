@@ -8,7 +8,7 @@ body {
 }
 
 /* ==========================================================================
-   NOVO HEADER (Prioridade 1: Redesign e Autenticação Visível)
+   NOVO HEADER (Refinado e Otimizado - Prioridades 1, 2 e 3)
    ========================================================================== */
 header {
     background: linear-gradient(to right, #fff9f2, #ffffff);
@@ -17,74 +17,95 @@ header {
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     border-bottom: 3px solid #ff8c00;
-    
-    /* Layout Flex para alinhar Marca à esquerda e User à direita */
+}
+
+.header-content {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
+    flex-direction: column; /* Mobile First: Empilhado */
     gap: 15px;
+    align-items: center;
+}
+
+/* Ajuste para Desktop: Distribui horizontalmente */
+@media (min-width: 768px) {
+    .header-content {
+        flex-direction: row;
+        justify-content: space-between;
+    }
 }
 
 /* Área da Marca (Logo + Título) */
-.header-brand {
+.brand-area {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
-.logo {
-    max-width: 50px; /* Reduzido significativamente */
+.logo-responsive {
+    max-width: 70px; /* Aumentado para maior destaque */
     height: auto;
     display: block;
+    transition: transform 0.3s ease;
+}
+
+.brand-area:hover .logo-responsive {
+    transform: scale(1.05);
 }
 
 header h2 {
     color: #ff8c00;
     margin: 0;
-    font-weight: bold;
-    font-size: 1.5rem;
-    text-shadow: none; /* Removido para visual mais limpo */
+    font-weight: 800; /* Mais peso para o título */
+    font-size: 1.6rem;
     line-height: 1.2;
+    text-transform: uppercase;
 }
 
-/* Área do Usuário (E-mail + Botão Sair) */
-.header-auth {
-    display: flex; /* Controlado via JS (block/none), mas flex ajuda no alinhamento interno */
+/* 
+   Área do Usuário (Cápsula Visual) 
+   Combina Badge de E-mail + Botão Sair em um único elemento visual
+*/
+.user-area {
+    display: flex; /* Controlado via JS (flex/none) */
     align-items: center;
-    gap: 15px;
-    background-color: #f1f8ff;
-    padding: 5px 15px;
-    border-radius: 20px;
-    border: 1px solid #b8daff;
+    justify-content: center;
+    background-color: white;
+    border-radius: 25px; /* Bordas totalmente arredondadas */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 3px;
+    border: 1px solid #ffe0b2;
 }
 
-.header-user-email {
+.email-badge {
+    background-color: #fff3e0; /* Fundo Creme Suave */
+    color: #e65100; /* Texto Laranja Escuro (Alto Contraste/Acessível) */
+    padding: 8px 15px;
+    border-radius: 20px 0 0 20px; /* Arredondado apenas na esquerda */
     font-size: 0.9em;
-    color: #1a3850;
-    font-weight: 500;
+    font-weight: 600;
+    border-right: 1px solid #ffe0b2;
+    white-space: nowrap;
 }
 
-.header-logout-btn {
-    background: transparent;
-    color: #dc3545;
-    border: 1px solid #dc3545;
-    padding: 4px 10px;
-    border-radius: 4px;
+.logout-btn-header {
+    background: linear-gradient(45deg, #dc3545, #c82333);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 0 20px 20px 0; /* Arredondado apenas na direita */
     cursor: pointer;
-    font-size: 0.85em;
+    font-size: 0.9em;
     font-weight: bold;
-    transition: all 0.2s;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 8px;
+    transition: all 0.2s;
+    white-space: nowrap;
 }
 
-.header-logout-btn:hover {
-    background-color: #dc3545;
-    color: white;
-    box-shadow: none;
-    transform: none;
+.logout-btn-header:hover {
+    background: linear-gradient(45deg, #bd2130, #a71d2a);
+    padding-right: 25px; /* Efeito sutil de expansão */
 }
 
 /* ========================================================================== */
@@ -445,9 +466,6 @@ button:active {
     flex-grow: 1;
 }
 
-/* ==========================================================================
-   ATUALIZAÇÃO DE PRIORIDADE 2: BOTÃO REMOVER (X)
-   ========================================================================== */
 /* Estilo para o nome de cada membro dentro do card */
 .membro-card {
     background-color: #f1f8ff;
@@ -504,7 +522,6 @@ button:active {
     color: white;
     transform: scale(1.1);
 }
-/* ========================================================================== */
 
 /* NOVO: Ícone de Cônjuge no Card da Escala */
 .spouse-icon {
@@ -939,12 +956,9 @@ footer {
 }
 
 
-/* Responsividade */
+/* Responsividade - ATUALIZADO PARA O NOVO HEADER */
 @media (max-width: 768px) {
-    /* Novo ajuste para o header responsivo */
-    header { flex-direction: column; align-items: stretch; }
-    .header-brand { justify-content: center; margin-bottom: 10px; }
-    .header-auth { justify-content: center; }
+    /* Ajuste para o header responsivo já é tratado pelas classes .header-content e .brand-area */
     
     nav { flex-direction: column; padding: 10px; }
     nav button { width: 100%; margin: 8px 0; padding: 12px 20px; }
@@ -954,15 +968,16 @@ footer {
     #formEscala .input-group { flex-direction: row; align-items: center; } /* Mantém radio na linha */
     ul li { flex-direction: column; align-items: flex-start; gap: 10px; }
     button, .secondary-button { width: 100%; }
-    .logo { max-width: 120px; }
+    
     #listaMembros li { gap: 5px; }
     #listaMembros li > div:last-child { flex-direction: row; width: 100%; }
     #listaMembros li > div:last-child button { flex-grow: 1; }
-    /* NOVO: Regra responsiva para os botões de autenticação */
+    
     .auth-actions {
         flex-direction: column;
     }
-    /* NOVO: Ajuste para o painel lateral no mobile */
+    
+    /* Ajuste para o painel lateral no mobile */
     .workspace-container { flex-direction: column; }
     .side-panel { width: 100%; position: static; max-height: none; box-sizing: border-box; }
 }
@@ -1045,7 +1060,7 @@ footer {
     opacity: 0.7;
     margin-left: 4px;
 }
-/* ATUALIZAÇÃO PRIORIDADE 2: Ícone extra para convidado */
+
 .membro-card.convidado i {
     margin-right: 5px;
 }
@@ -1159,7 +1174,7 @@ footer {
     background-color: #fffbf2; /* Fundo sutilmente amarelado */
 }
 
-/* ATUALIZAÇÃO PRIORIDADE 3: Container para múltiplos ícones de status */
+/* Container para múltiplos ícones de status */
 .suplente-status-icons {
     display: inline-flex;
     gap: 5px;

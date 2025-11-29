@@ -13,20 +13,21 @@
 <body>
     <!-- 
       ALTERAÇÃO PRIORIDADE 1: 
-      Cabeçalho reestruturado para layout horizontal e área de usuário.
+      Cabeçalho reestruturado para layout visual refinado (Cápsula de usuário + Logo ajustado).
     -->
     <header>
         <div class="header-content">
             <div class="brand-area">
-                <!-- Adicionada classe 'logo-small' para controle via CSS -->
-                <img src="image/logo.png" alt="Logotipo Escala de Intercessores" class="logo logo-small">
+                <!-- Alterado para 'logo-responsive' para controle de tamanho via CSS -->
+                <img src="image/logo.png" alt="Logotipo Escala de Intercessores" class="logo logo-responsive">
                 <h2>GERADOR DE ESCALA</h2>
             </div>
             
             <!-- Nova área de usuário (Exibida apenas quando logado) -->
+            <!-- Classes atualizadas para o novo estilo visual -->
             <div id="user-info-display" class="user-area" style="display: none;">
-                <span id="user-email-span"></span>
-                <button id="header-logout-btn" class="logout-btn" title="Sair da conta">
+                <span id="user-email-badge" class="email-badge"></span>
+                <button id="header-logout-btn" class="logout-btn-header" title="Sair da conta">
                     <i class="fas fa-sign-out-alt"></i> Sair
                 </button>
             </div>
@@ -34,7 +35,7 @@
     </header>
 
     <nav>
-        <button id="nav-auth"><i class="fas fa-lock"></i> Autenticação</button>
+        <!-- PRIORIDADE 1: Botão de Autenticação removido para limpeza do menu -->
         <button id="nav-cadastro"><i class="fas fa-user-plus"></i> Cadastro de Membros</button>
         <button id="nav-disponibilidade"><i class="fas fa-tasks"></i> Disponibilidade</button> 
         <button id="nav-restricoes"><i class="fas fa-calendar-times"></i> Períodos de Restrição</button>
@@ -42,7 +43,7 @@
         <button id="nav-escala"><i class="fas fa-calendar-check"></i> Geração da Escala</button>
     </nav>
 
-    <!-- Aba de Autenticação -->
+    <!-- Aba de Autenticação (Mantida no DOM para uso lógico, mas sem botão no menu) -->
     <div id="auth" class="tab">
         <h2>Autenticação</h2>
         <form id="formAuth" onsubmit="event.preventDefault();">
@@ -59,7 +60,6 @@
                 <button type="button" id="btnLogin" class="secondary-button">Fazer Login</button>
             </div>
         </form>
-        <!-- Botão antigo de logout removido daqui, pois agora está no header -->
     </div>
 
     <!-- Aba Cadastro de Membros -->

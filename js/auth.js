@@ -13,6 +13,7 @@ import { showTab, showToast } from './ui.js';
 export function setupAuthListeners(auth, onLoginSuccess) {
     const btnRegistro = document.getElementById('btnRegistro');
     const btnLogin = document.getElementById('btnLogin');
+    const btnHeaderLogout = document.getElementById('header-logout-btn');
 
     // Listener para o botão de Registro
     if (btnRegistro) {
@@ -54,18 +55,29 @@ export function setupAuthListeners(auth, onLoginSuccess) {
         });
     }
 
+    // Listener para o botão de Logout no cabeçalho
+    if (btnHeaderLogout) {
+        btnHeaderLogout.addEventListener('click', () => handleLogout(auth));
+    }
 
     // Listener de Estado de Autenticação (o ponto central de controle)
     auth.onAuthStateChanged((user) => {
-        const logoutButton = document.getElementById('logout');
+        // Elementos do novo Header
+        const userInfoDisplay = document.getElementById('user-info-display');
+        const userEmailSpan = document.getElementById('user-email-span');
+        
         if (user) {
             // Usuário está logado
-            logoutButton.style.display = 'block';
+            if (userInfoDisplay) userInfoDisplay.style.display = 'flex';
+            if (userEmailSpan) userEmailSpan.textContent = user.email;
+            
             showTab('cadastro');
             onLoginSuccess(); // Dispara o carregamento de dados e atualização da UI
         } else {
             // Usuário está deslogado
-            logoutButton.style.display = 'none';
+            if (userInfoDisplay) userInfoDisplay.style.display = 'none';
+            if (userEmailSpan) userEmailSpan.textContent = '';
+            
             showTab('auth');
         }
     });
@@ -78,6 +90,7 @@ export function setupAuthListeners(auth, onLoginSuccess) {
 export function handleLogout(auth) {
     auth.signOut().then(() => {
         showToast('Logout bem-sucedido!', 'success');
+        // O onAuthStateChanged cuidará de limpar a UI do header
     }).catch((error) => {
         showToast('Erro ao fazer logout: ' + error.message, 'error');
     });

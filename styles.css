@@ -403,6 +403,20 @@ button:active {
     cursor: grabbing;
 }
 
+/* NOVO: Ícone de Cônjuge no Card da Escala */
+.spouse-icon {
+    color: #e91e63; /* Tom rosa/avermelhado para destacar sutilmente */
+    margin-right: 6px;
+    font-size: 0.9em;
+    cursor: help;
+    transition: transform 0.2s;
+    vertical-align: middle;
+}
+
+.spouse-icon:hover {
+    transform: scale(1.2);
+}
+
 /* Feedback visual para o membro sendo arrastado */
 .membro-card.dragging {
     opacity: 0.5;

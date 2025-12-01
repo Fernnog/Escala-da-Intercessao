@@ -23,8 +23,10 @@ import {
     salvarSuspensao,
     fecharModalSuspensao
 } from './member-actions.js';
-// Importa a nova função do arquivo isolado
+// Importa o importador de planilhas XLSX
 import { setupXLSXImporter } from './file-importer.js';
+// NOVO: Importa o exportador HTML estilizado
+import { gerarRelatorioHTML } from './html-exporter.js';
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -61,11 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupEventListeners() {
         
         // --- Listeners da Barra de Navegação ---
-        /* 
-           ATUALIZAÇÃO (Prioridade 3):
-           O listener do botão 'nav-auth' foi removido aqui, pois o botão 
-           foi retirado do HTML para otimizar o fluxo de autenticação.
-        */
         document.getElementById('nav-cadastro').addEventListener('click', () => showTab('cadastro'));
         document.getElementById('nav-disponibilidade').addEventListener('click', () => {
             showTab('disponibilidade');
@@ -78,8 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Listeners dos Botões de Ação Globais ---
         document.getElementById('btn-exportar-xlsx').addEventListener('click', exportarEscalaXLSX);
         
-        // Nota: O listener do botão de logout do header é gerenciado em auth.js, 
-        // mas mantemos este aqui caso exista um botão de logout secundário (legado) na UI.
+        // NOVO: Listener para o botão de Exportação HTML Estilizado
+        const btnExportarHTML = document.getElementById('btn-exportar-html');
+        if (btnExportarHTML) {
+            btnExportarHTML.addEventListener('click', gerarRelatorioHTML);
+        }
+
         const logoutBtn = document.getElementById('logout');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => handleLogout(auth));
@@ -89,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-salvar-suspensao').addEventListener('click', () => salvarSuspensao(auth, database));
         document.getElementById('btn-cancelar-suspensao').addEventListener('click', fecharModalSuspensao);
 
-        // --- Listeners de Submissão de Formulários (Refatorados) ---
+        // --- Listeners de Submissão de Formulários ---
         document.getElementById('formCadastro').addEventListener('submit', (e) => {
             handleCadastroSubmit(e, auth, database);
         });
@@ -110,6 +111,5 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     setupSavedSchedulesListeners(auth, database);
     exposeFunctionsToGlobalScope();
-    // Ativa o novo importador de planilhas
     setupXLSXImporter(); 
 });

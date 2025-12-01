@@ -1,7 +1,7 @@
 // ARQUIVO: schedule-generator.js
 
 import { membros, restricoes, restricoesPermanentes } from './data-manager.js';
-import { exibirIndiceEquilibrio, renderEscalaEmCards, renderAnaliseConcentracao, renderizarFiltros, configurarDragAndDrop} from './ui.js';
+import { exibirIndiceEquilibrio, renderEscalaEmCards, renderAnaliseConcentracao, renderizarFiltros, configurarDragAndDrop, showToast } from './ui.js';
 import { checkMemberAvailability, saoCompativeis } from './availability.js';
 
 // Configurações Globais do Gerador
@@ -129,6 +129,25 @@ export function setupGeradorEscala() {
         const mes = parseInt(document.getElementById('mesEscala').value);
         const ano = parseInt(document.getElementById('anoEscala').value);
 
+        // --- NOVA LÓGICA: CÁLCULO DE INTERVALO PROPORCIONAL PARA WHATSAPP ---
+        let gapDinamicoWhatsApp = 0;
+        if (gerarOração) {
+            // Conta membros aptos (não suspensos do WhatsApp)
+            const membrosAptosWhatsApp = membros.filter(m => !m.suspensao.whatsapp).length;
+            
+            // Fator 0.6 (60% da equipe): Garante descanso proporcional sem travar a escala
+            // Math.max(0, ...) garante segurança contra números negativos
+            gapDinamicoWhatsApp = Math.max(0, Math.floor(membrosAptosWhatsApp * 0.6));
+            
+            // MELHORIA UX: Feedback visual sobre o intervalo calculado
+            if (gapDinamicoWhatsApp > 0) {
+                showToast(`Intervalo de descanso para WhatsApp ajustado para ${gapDinamicoWhatsApp} dias (baseado em ${membrosAptosWhatsApp} membros ativos).`, 'info');
+            } else {
+                showToast('Atenção: Equipe de WhatsApp muito pequena para aplicar intervalos de descanso.', 'warning');
+            }
+        }
+        // ----------------------------------------------------------------------
+
         // Inicializa contadores
         const justificationData = {};
         membros.forEach(m => {
@@ -175,7 +194,7 @@ export function setupGeradorEscala() {
                 return (partsAtuais - minParticipacoesGlobal) <= CONFIG_GERADOR.LIMITE_DISCREPANCIA;
             });
 
-            // C. Filtro de Fadiga (Olhar para trás - i-1, i-2)
+            // C. Filtro de Fadiga (Olhar para trás - i-1, i-2) - Apenas para CULTOS
             // Lógica: Se o membro esteve nos 2 últimos turnos de culto, bloqueia neste.
             if (CONFIG_GERADOR.TURNOS_CULTO.includes(dia.tipo)) {
                 // Recupera apenas os dias anteriores que também são cultos
@@ -199,6 +218,25 @@ export function setupGeradorEscala() {
                     });
                 }
             }
+
+            // --- NOVO FILTRO: Intervalo Proporcional (Apenas para WHATSAPP) ---
+            if (dia.tipo === 'Oração no WhatsApp' && gapDinamicoWhatsApp > 0) {
+                membrosPool = membrosPool.filter(m => {
+                    // Define janela de "respiro" baseada no cálculo proporcional
+                    // Math.max(0, ...) impede acesso a índices negativos no início do mês
+                    const diasAnterioresRecentes = dias.slice(Math.max(0, indexDiaAtual - gapDinamicoWhatsApp), indexDiaAtual);
+                    
+                    // Verifica se o membro trabalhou no WhatsApp nessa janela
+                    const foiEscaladoRecentemente = diasAnterioresRecentes.some(dAnterior => 
+                        dAnterior.tipo === 'Oração no WhatsApp' && 
+                        dAnterior.selecionados.some(selecionado => selecionado.nome === m.nome)
+                    );
+
+                    // Mantém no pool apenas se NÃO foi escalado recentemente
+                    return !foiEscaladoRecentemente;
+                });
+            }
+            // ------------------------------------------------------------------
 
             // D. Seleção Final
             const qtdNecessaria = (dia.tipo === 'Oração no WhatsApp' || dia.tipo === 'Sábado') ? 1 : quantidadeCultos;
@@ -246,8 +284,10 @@ export function setupGeradorEscala() {
         
         // Aplica o feedback visual de fadiga (laranja) caso alguma regra manual viole a lógica posteriormente
         // ou se o gerador falhou em evitar (edge cases)
-        if (typeof aplicarFeedbackFadiga === 'function') {
-            aplicarFeedbackFadiga(dias); 
+        if (typeof window.aplicarFeedbackFadiga === 'function' || typeof aplicarFeedbackFadiga === 'function') {
+            // Importado ou Global
+            const func = window.aplicarFeedbackFadiga || aplicarFeedbackFadiga;
+            if (func) func(dias); 
         }
 
         renderizarFiltros(dias, analisarConcentracao(dias));

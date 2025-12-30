@@ -1,4 +1,4 @@
-// js/saved-schedules-manager.js (Versão Simplificada Pós-Correção)
+// js/saved-schedules-manager.js
 
 import { salvarDados, adicionarEscalaSalva, excluirEscalaSalva, atualizarNomeEscalaSalva, escalasSalvas, membros, restricoes, restricoesPermanentes } from './data-manager.js';
 import { showToast, atualizarTodasAsListas, abrirModalAcaoEscala, renderEscalaEmCards, configurarDragAndDrop, escalaAtual, exibirIndiceEquilibrio } from './ui.js';
@@ -66,16 +66,13 @@ export function setupSavedSchedulesListeners(auth, database) {
             if (!escala) return;
 
             if (action === 'load') {
-                // ======================================================================
-                // === CÓDIGO DE CARREGAMENTO SIMPLIFICADO ===
-                // ======================================================================
                 // A validação de data agora acontece no data-manager.js
+                // Aqui apenas verificamos se sobrou algo válido após a limpeza
                 const diasComDatasValidas = escala.dias;
 
                 if (!diasComDatasValidas || diasComDatasValidas.length === 0) {
-                    // ALTERAÇÃO PRIORIDADE 3: Feedback de erro aprimorado
-                    console.error('Falha ao carregar escala. Conteúdo recebido:', escala);
-                    showToast(`Erro: A escala "${escala.nome}" parece estar vazia ou corrompida.`, 'error');
+                    console.error('Falha ao carregar escala. Conteúdo inválido ou vazio:', escala);
+                    showToast(`Erro: A escala "${escala.nome}" não contém dados válidos.`, 'error');
                     return;
                 }
                 
@@ -86,8 +83,10 @@ export function setupSavedSchedulesListeners(auth, database) {
                 });
                 diasComDatasValidas.forEach(dia => {
                     dia.selecionados.forEach(membro => {
-                        if (justificationDataRecalculado[membro.nome]) {
-                            justificationDataRecalculado[membro.nome].participations++;
+                        if (membro && membro.nome && !membro.isVaga && !membro.isConvidado) {
+                            if (justificationDataRecalculado[membro.nome]) {
+                                justificationDataRecalculado[membro.nome].participations++;
+                            }
                         }
                     });
                 });
@@ -100,9 +99,6 @@ export function setupSavedSchedulesListeners(auth, database) {
                 showToast(`Escala "${escala.nome}" carregada com sucesso.`, 'success');
                 document.getElementById('resultadoEscala').scrollIntoView({ behavior: 'smooth' });
                 _updateLoadedScheduleIndicator(escala.nome);
-                // ======================================================================
-                // === FIM DO CÓDIGO SIMPLIFICADO ===
-                // ======================================================================
 
             } else if (action === 'rename' || action === 'delete') {
                 abrirModalAcaoEscala(action, escala.id, escala.nome);
@@ -124,7 +120,13 @@ export function setupSavedSchedulesListeners(auth, database) {
             }
 
             if (action === 'save') {
-                const novaEscala = { id: `escala_${Date.now()}`, nome, dias: escalaAtual };
+                // Ao salvar, garantimos que copiamos a escalaAtual (que tem objetos Date)
+                // A conversão para string ocorrerá dentro de salvarDados() no data-manager.js
+                const novaEscala = { 
+                    id: `escala_${Date.now()}`, 
+                    nome, 
+                    dias: escalaAtual 
+                };
                 adicionarEscalaSalva(novaEscala);
             } else if (action === 'rename') {
                 atualizarNomeEscalaSalva(escalaId, nome);
@@ -136,6 +138,8 @@ export function setupSavedSchedulesListeners(auth, database) {
                 atualizarTodasAsListas();
                 fecharModal();
                 showToast('Ação concluída com sucesso!', 'success');
+            }).catch(err => {
+                showToast('Erro ao salvar no banco de dados: ' + err.message, 'error');
             });
         });
     }

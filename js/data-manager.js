@@ -1,4 +1,4 @@
-// ARQUIVO: data-manager.js (Versão Corrigida e Robusta)
+// ARQUIVO: js/data-manager.js
 
 // --- ESTADO DA APLICAÇÃO ---
 export let membros = [];
@@ -56,11 +56,26 @@ export function salvarDados(auth, database) {
     const user = auth.currentUser;
     if (!user) return Promise.resolve(); // Retorna uma promessa para não quebrar a cadeia .then()
     const uid = user.uid;
+    
+    // Preparar escalas salvas para persistência (garantir datas em string)
+    const escalasParaSalvar = escalasSalvas.map(escala => {
+        const diasFormatados = escala.dias.map(dia => {
+            let dataStr = null;
+            if (dia.data instanceof Date) {
+                dataStr = dia.data.toISOString();
+            } else if (typeof dia.data === 'string') {
+                dataStr = dia.data;
+            }
+            return { ...dia, data: dataStr };
+        });
+        return { ...escala, dias: diasFormatados };
+    });
+
     return database.ref('users/' + uid).set({
         membros: membros,
         restricoes: restricoes,
         restricoesPermanentes: restricoesPermanentes,
-        escalasSalvas: escalasSalvas
+        escalasSalvas: escalasParaSalvar
     });
 }
 
@@ -98,34 +113,50 @@ export function carregarDados(auth, database, onDataLoaded) {
                 restricoesPermProcessadas.forEach(restricao => restricoesPermanentes.push(restricao));
                 
                 // =================================================================================
-                // === INÍCIO DA CORREÇÃO DEFINITIVA: Processamento robusto de escalas salvas ===
+                // === CORREÇÃO DE LEITURA DE DATAS (ROBUSTEZ AUMENTADA) ===
                 // =================================================================================
                 const escalasSalvasDoBanco = dados.escalasSalvas || [];
                 
                 const escalasProcessadas = escalasSalvasDoBanco.map(escala => {
                     if (escala.dias && Array.isArray(escala.dias)) {
-                        // Mapeia os dias e converte a string de data para um objeto Date.
                         const diasValidos = escala.dias
                             .map(dia => {
-                                // ALTERAÇÃO PRIORIDADE 2: Verificação segura antes de converter
                                 let dataConvertida = null;
-                                if (dia.data) {
+                                
+                                // Cenário 1: Data já é objeto Date (raro vindo de JSON, mas possível em cache)
+                                if (dia.data instanceof Date) {
+                                    dataConvertida = dia.data;
+                                } 
+                                // Cenário 2: Data é string (Padrão esperado)
+                                else if (typeof dia.data === 'string') {
+                                    // Tenta conversão padrão (ISO 8601)
                                     dataConvertida = new Date(dia.data);
+                                    
+                                    // Cenário 3: Fallback para datas mal formatadas ou antigas
+                                    if (isNaN(dataConvertida.getTime())) {
+                                        console.warn(`Tentando recuperar data inválida: ${dia.data}`);
+                                        // Se for algo simples, tenta manter ou usar a data atual como fallback 
+                                        // para não perder o registro (opcional, aqui optamos por descartar se irrecuperável)
+                                    }
                                 }
+
                                 return { ...dia, data: dataConvertida };
                             })
-                            // ALTERAÇÃO PRIORIDADE 2: Filtro garante que data existe E é válida
-                            .filter(dia => dia.data && !isNaN(dia.data.getTime())); 
+                            // Filtro de Segurança: Só mantém dias com datas válidas
+                            .filter(dia => dia.data && !isNaN(dia.data.getTime()));
+
+                        // Se o filtro removeu tudo, loga para debug
+                        if (escala.dias.length > 0 && diasValidos.length === 0) {
+                            console.error(`Atenção: A escala "${escala.nome}" tinha dias, mas as datas eram inválidas e foram removidas.`);
+                        }
 
                         return { ...escala, dias: diasValidos };
                     }
-                    // Se a escala não tiver dias, retorna como está (ou vazia para segurança)
+                    // Se a escala não tiver dias, retorna como está
                     return { ...escala, dias: [] }; 
                 });
                 
                 escalasProcessadas.forEach(escala => escalasSalvas.push(escala));
-                // ===============================================================================
-                // === FIM DA CORREÇÃO DEFINITIVA ===
                 // ===============================================================================
             }
             

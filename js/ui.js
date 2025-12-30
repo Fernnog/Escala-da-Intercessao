@@ -206,6 +206,12 @@ export function setupUiListeners() {
     if(btnFecharPainel) {
         btnFecharPainel.addEventListener('click', () => {
              document.getElementById('painelSuplentes').style.display = 'none';
+             // Limpa seleção visual
+             document.querySelectorAll('.escala-card').forEach(c => {
+                 c.style.borderColor = '';
+                 c.style.boxShadow = '';
+                 c.style.transform = '';
+             });
         });
     }
 
@@ -477,6 +483,16 @@ export function renderEscalaEmCards(dias) {
 
     // Aplica o feedback visual de Fadiga (Laranja) após a renderização
     aplicarFeedbackFadiga(diasValidos);
+
+    // [MODIFICAÇÃO PRIORIDADE 1] Seleção Automática do Primeiro Dia para ativar o Painel
+    if (diasValidos.length > 0) {
+        setTimeout(() => {
+            // Garante que a função está disponível e simula a seleção do primeiro dia
+            if (typeof window.atualizarPainelSuplentes === 'function') {
+                window.atualizarPainelSuplentes(diasValidos[0].id);
+            }
+        }, 100);
+    }
 }
 
 // === FUNÇÃO DE FEEDBACK DE FADIGA (SEQUÊNCIA DE 3) ===
@@ -654,6 +670,26 @@ window.atualizarPainelSuplentes = function(cardId) {
     const painel = document.getElementById('painelSuplentes');
     const lista = document.getElementById('listaSuplentes');
     const contexto = document.getElementById('painel-contexto');
+
+    // [MODIFICAÇÃO UX] Feedback Visual de Seleção
+    // 1. Limpa destaque de todos os cards
+    document.querySelectorAll('.escala-card').forEach(c => {
+        c.style.borderColor = '';
+        c.style.boxShadow = '';
+        c.style.transform = '';
+        c.style.zIndex = '';
+    });
+
+    // 2. Aplica destaque ao card selecionado
+    const cardAtivo = document.querySelector(`.escala-card[data-id="${cardId}"]`);
+    if (cardAtivo) {
+        // Estilos inline aplicados via JS para não depender de alteração no CSS
+        cardAtivo.style.borderColor = '#4682b4'; 
+        cardAtivo.style.boxShadow = '0 0 15px rgba(70, 130, 180, 0.4)';
+        cardAtivo.style.transform = 'scale(1.02)';
+        cardAtivo.style.zIndex = '5'; // Garante que fique sobre os outros no zoom
+        cardAtivo.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
     
     if(painel) painel.style.display = 'block';
     if(contexto) contexto.textContent = `Para: ${dia.tipo} (${dia.data.toLocaleDateString()})`;

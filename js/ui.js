@@ -187,7 +187,7 @@ export function toggleConjuge() {
     }
 }
 
-// === NOVO: Função para alternar o Modo Foco ===
+// === Função para alternar o Modo Foco ===
 export function toggleFocusMode() {
     document.body.classList.toggle('focus-mode');
     
@@ -234,7 +234,7 @@ export function setupUiListeners() {
         btnConfirmExterno.addEventListener('click', window.confirmarAdicaoExterno);
     }
 
-    // === NOVO: Listeners para o Modo Foco ===
+    // === Listeners para o Modo Foco ===
     const btnEnterFocus = document.getElementById('btn-enter-focus');
     const btnExitFocus = document.getElementById('btn-exit-focus');
 
@@ -251,6 +251,33 @@ export function setupUiListeners() {
             toggleFocusMode();
         }
     });
+
+    // === NOVO: Listener para o Botão "Sim, Forçar Escala" do Modal de Restrição ===
+    const btnForceSim = document.getElementById('btn-force-sim');
+    if (btnForceSim) {
+        btnForceSim.addEventListener('click', () => {
+            // Recupera os dados salvos nos inputs ocultos
+            const nomeArrastado = document.getElementById('forceNomeArrastado').value;
+            const nomeAlvo = document.getElementById('forceNomeAlvo').value || null;
+            const cardAlvoId = document.getElementById('forceCardAlvoId').value;
+            const indexAlvo = parseInt(document.getElementById('forceIndexAlvo').value);
+            const sourceType = document.getElementById('forceSourceType').value;
+
+            // Encontra o objeto do dia alvo
+            const diaAlvo = escalaAtual.find(d => d.id === cardAlvoId);
+            
+            if (diaAlvo) {
+                // Executa a troca ignorando a validação (pois já foi confirmada)
+                _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, sourceType === 'suplente');
+                showToast('Membro escalado manualmente (regra ignorada).', 'warning');
+            } else {
+                showToast('Erro ao recuperar o dia alvo.', 'error');
+            }
+            
+            // Fecha o modal
+            document.getElementById('modalConfirmacaoForce').style.display = 'none';
+        });
+    }
 }
 
 export function showToast(message, type = 'success') {
@@ -426,6 +453,64 @@ export function renderAnaliseConcentracao(filtro = 'all') {
 
     container.innerHTML = contentHTML;
     container.style.display = contentHTML ? 'block' : 'none';
+}
+
+// === NOVO: RELATÓRIO DE AUDITORIA DE CONFLITOS (PRIORIDADE 2) ===
+/**
+ * Renderiza um painel de auditoria listando todos os membros que foram escalados
+ * manualmente em dias onde possuem restrições (suspenso, permanente, temporária).
+ */
+export function renderRelatorioConflitos() {
+    const container = document.getElementById('conflictReportContainer');
+    if (!container) return;
+
+    const conflitos = [];
+
+    // Varre toda a escala atual procurando violações
+    escalaAtual.forEach(dia => {
+        dia.selecionados.forEach(membro => {
+            if (!membro.nome || membro.isVaga || membro.isConvidado) return;
+
+            // Checa disponibilidade "crua"
+            const status = checkMemberAvailability(membro, dia.tipo, dia.data);
+
+            if (status.type !== 'disponivel') {
+                let motivo = '';
+                switch (status.type) {
+                    case 'suspenso': motivo = 'Suspensão Ativa'; break;
+                    case 'permanente': motivo = 'Restrição Permanente'; break;
+                    case 'temporaria': motivo = 'Restrição Temporária (Data)'; break;
+                }
+                
+                conflitos.push({
+                    dia: dia.data.toLocaleDateString('pt-BR'),
+                    turno: dia.tipo,
+                    membro: membro.nome,
+                    motivo: motivo
+                });
+            }
+        });
+    });
+
+    if (conflitos.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    // Renderiza a lista
+    container.style.display = 'block';
+    container.innerHTML = `
+        <h4><i class="fas fa-exclamation-triangle"></i> Auditoria de Conflitos (${conflitos.length})</h4>
+        <p style="font-size: 0.9em; margin-bottom: 10px;">Os seguintes membros foram escalados manualmente ignorando regras de restrição:</p>
+        <ul class="conflict-list">
+            ${conflitos.map(c => `
+                <li>
+                    <span><strong>${c.dia} (${c.turno}):</strong> ${c.membro}</span>
+                    <span class="conflict-tag">${c.motivo}</span>
+                </li>
+            `).join('')}
+        </ul>
+    `;
 }
 
 // === FUNÇÃO CRUCIAL: RENDERIZAR CARDS COM SUPORTE A VAGAS, CONVIDADOS E BOTÃO REMOVER ===
@@ -801,6 +886,9 @@ window.limparVaga = function(diaId, index) {
     // Re-configura Drag & Drop para os novos elementos DOM
     configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
 
+    // Atualiza relatório de conflitos (caso a remoção resolva algo)
+    renderRelatorioConflitos();
+
     showToast('Membro removido da escala.', 'warning');
 };
 
@@ -887,9 +975,13 @@ function _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, isFromSuple
     // RECONECTA EVENTOS DE DRAG & DROP APÓS ATUALIZAÇÃO DOM
     configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
     
+    // === ATUALIZAÇÃO PRIORIDADE 2: Renderiza Relatório de Conflitos após troca ===
+    renderRelatorioConflitos();
+
     showToast('Alteração realizada com sucesso.', 'success');
 }
 
+// === MODIFICAÇÃO PRIORIDADE 1: Lógica de Interceptação para Confirmação ===
 function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, sourceType) {
     const diaAlvo = escalaAtual.find(d => d.id === cardAlvoId);
     if (!diaAlvo) return;
@@ -906,42 +998,45 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, sour
     
     if (indexAlvo === -1) return; // Não achou onde soltar
 
-    // Validações
+    // Validações Básicas
     const membroArrastadoObj = membros.find(m => m.nome === nomeArrastado);
     if (!membroArrastadoObj) return;
 
+    // Impede duplicação no mesmo dia (isso não é permitido nem com Force)
     if (diaAlvo.selecionados.some(m => m.nome === nomeArrastado)) {
         showToast(`${nomeArrastado} já está neste dia.`, 'warning');
         return;
     }
 
-    const diaAlvoData = new Date(diaAlvo.data); diaAlvoData.setHours(0,0,0,0);
-    const temRestricaoTemp = todasAsRestricoes.some(r => r.membro === nomeArrastado && diaAlvoData >= new Date(r.inicio) && diaAlvoData <= new Date(r.fim));
-    const temRestricaoPerm = todasAsRestricoesPerm.some(r => r.membro === nomeArrastado && r.diaSemana === diaAlvo.tipo);
-    const suspenso = checkMemberAvailability(membroArrastadoObj, diaAlvo.tipo).type === 'suspenso';
+    // --- NOVA LÓGICA DE VALIDAÇÃO COM INTERCEPTAÇÃO ---
+    // Verifica disponibilidade antes de mover
+    const status = checkMemberAvailability(membroArrastadoObj, diaAlvo.tipo, diaAlvo.data);
 
-    const erros = [];
-    if (temRestricaoTemp) erros.push("Restrição Temporária (Férias/Ausência)");
-    if (temRestricaoPerm) erros.push("Restrição Permanente de Dia/Turno");
-    if (suspenso) erros.push("Membro Suspenso");
+    if (status.type !== 'disponivel') {
+        // Monta mensagem de erro detalhada
+        let msg = '';
+        if (status.type === 'suspenso') msg = `O membro <strong>${nomeArrastado}</strong> está marcado como SUSPENSO para ${diaAlvo.tipo}.`;
+        else if (status.type === 'permanente') msg = `O membro <strong>${nomeArrastado}</strong> possui restrição permanente para ${diaAlvo.tipo}.`;
+        else if (status.type === 'temporaria') msg = `O membro <strong>${nomeArrastado}</strong> possui restrição de data (Férias/Ausência) no dia ${diaAlvo.data.toLocaleDateString()}.`;
 
-    // Verificar compatibilidade com o parceiro (se houver)
-    const outrosMembros = diaAlvo.selecionados.filter((m, i) => i !== indexAlvo && !m.isVaga && !m.isConvidado);
-    for (const parceiro of outrosMembros) {
-        if (!saoCompativeis(membroArrastadoObj, parceiro)) {
-            erros.push(`Incompatível com ${parceiro.nome} (Gênero/Cônjuge)`);
-        }
+        // Preenche os dados ocultos para execução posterior se confirmado
+        const modal = document.getElementById('modalConfirmacaoForce');
+        document.getElementById('msgRestricaoForce').innerHTML = msg;
+        
+        document.getElementById('forceNomeArrastado').value = nomeArrastado;
+        document.getElementById('forceNomeAlvo').value = nomeAlvo || '';
+        document.getElementById('forceCardAlvoId').value = cardAlvoId;
+        document.getElementById('forceIndexAlvo').value = indexAlvo;
+        document.getElementById('forceSourceType').value = sourceType;
+
+        // Abre o Modal de Interceptação
+        modal.style.display = 'flex';
+        
+        // INTERROMPE A EXECUÇÃO AQUI (não executa a troca)
+        return; 
     }
 
-    // SE HOUVER ERROS, MOSTRA TOAST E PERMITE TROCA (SEM MODAL)
-    if (erros.length > 0) {
-        _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, sourceType === 'suplente');
-        const msgErro = erros.join(', ');
-        showToast(`Alerta: ${msgErro}`, 'warning');
-        return;
-    }
-
-    // Se não tem erro, executa direto
+    // Se estiver disponível (sem restrições), executa direto
     _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, sourceType === 'suplente');
 }
 

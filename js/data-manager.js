@@ -105,14 +105,17 @@ export function carregarDados(auth, database, onDataLoaded) {
                 const escalasProcessadas = escalasSalvasDoBanco.map(escala => {
                     if (escala.dias && Array.isArray(escala.dias)) {
                         // Mapeia os dias e converte a string de data para um objeto Date.
-                        // Em seguida, filtra para garantir que apenas dias com data válida permaneçam.
                         const diasValidos = escala.dias
                             .map(dia => {
-                                // A data vinda do Firebase é uma string, converte para objeto Date
-                                const dataConvertida = new Date(dia.data); 
+                                // ALTERAÇÃO PRIORIDADE 2: Verificação segura antes de converter
+                                let dataConvertida = null;
+                                if (dia.data) {
+                                    dataConvertida = new Date(dia.data);
+                                }
                                 return { ...dia, data: dataConvertida };
                             })
-                            .filter(dia => dia.data && !isNaN(dia.data.getTime())); // Checa se a data é válida
+                            // ALTERAÇÃO PRIORIDADE 2: Filtro garante que data existe E é válida
+                            .filter(dia => dia.data && !isNaN(dia.data.getTime())); 
 
                         return { ...escala, dias: diasValidos };
                     }

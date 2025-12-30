@@ -73,7 +73,9 @@ export function setupSavedSchedulesListeners(auth, database) {
                 const diasComDatasValidas = escala.dias;
 
                 if (!diasComDatasValidas || diasComDatasValidas.length === 0) {
-                    showToast(`Erro: A escala "${escala.nome}" não contém dados de dias válidos.`, 'error');
+                    // ALTERAÇÃO PRIORIDADE 3: Feedback de erro aprimorado
+                    console.error('Falha ao carregar escala. Conteúdo recebido:', escala);
+                    showToast(`Erro: A escala "${escala.nome}" parece estar vazia ou corrompida.`, 'error');
                     return;
                 }
                 

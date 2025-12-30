@@ -12,7 +12,6 @@
 </head>
 <body>
     <!-- 
-      ALTERAÇÃO PRIORIDADE 1: 
       Cabeçalho reestruturado para layout visual refinado (Cápsula de usuário + Logo ajustado).
     -->
     <header>
@@ -24,7 +23,6 @@
             </div>
             
             <!-- Nova área de usuário (Exibida apenas quando logado) -->
-            <!-- Classes atualizadas para o novo estilo visual -->
             <div id="user-info-display" class="user-area" style="display: none;">
                 <span id="user-email-badge" class="email-badge"></span>
                 <button id="header-logout-btn" class="logout-btn-header" title="Sair da conta">
@@ -35,7 +33,6 @@
     </header>
 
     <nav>
-        <!-- PRIORIDADE 1: Botão de Autenticação removido para limpeza do menu -->
         <button id="nav-cadastro"><i class="fas fa-user-plus"></i> Cadastro de Membros</button>
         <button id="nav-disponibilidade"><i class="fas fa-tasks"></i> Disponibilidade</button> 
         <button id="nav-restricoes"><i class="fas fa-calendar-times"></i> Períodos de Restrição</button>
@@ -43,7 +40,7 @@
         <button id="nav-escala"><i class="fas fa-calendar-check"></i> Geração da Escala</button>
     </nav>
 
-    <!-- Aba de Autenticação (Mantida no DOM para uso lógico, mas sem botão no menu) -->
+    <!-- Aba de Autenticação -->
     <div id="auth" class="tab">
         <h2>Autenticação</h2>
         <form id="formAuth" onsubmit="event.preventDefault();">
@@ -223,6 +220,9 @@
         <!-- FIM DO CONTAINER WORKSPACE -->
 
         <div id="balanceIndexContainer" style="display: none; cursor: pointer;"></div>
+
+        <!-- [NOVO] Container para Relatório de Conflitos e Auditoria de Regras -->
+        <div id="conflictReportContainer" style="display: none;"></div>
         
         <div id="escala-filtros" class="escala-filtros-container"></div>
         
@@ -235,7 +235,7 @@
 
         <button id="btn-exportar-xlsx" class="secondary-button">Exportar Escala (XLSX)</button>
         
-        <!-- NOVO BOTÃO DE EXPORTAÇÃO HTML ESTILIZADO -->
+        <!-- Botão de Exportação HTML Estilizado -->
         <button id="btn-exportar-html" class="secondary-button" style="background: linear-gradient(45deg, #212529, #343a40); margin-left: 10px;">
             <i class="fas fa-file-code"></i> Gerar Relatório Oficial
         </button>
@@ -310,12 +310,23 @@
         </div>
     </div>
 
-    <!-- Modal de Confirmação de Sobrescrita (Force Override) -->
+    <!-- [NOVO] Modal de Confirmação de Sobrescrita (Force Override) -->
     <div id="modalConfirmacaoForce" class="modal-overlay" style="display: none;">
         <div class="modal-content">
-            <h3 style="color: #dc3545; background: none; -webkit-text-fill-color: initial;"><i class="fas fa-exclamation-triangle"></i> Restrição Detectada</h3>
-            <div id="msgRestricaoForce" style="margin: 15px 0; background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; border-radius: 4px;"></div>
-            <p>Deseja ignorar as regras acima e escalar este membro mesmo assim?</p>
+            <h3 style="color: #dc3545; background: none; -webkit-text-fill-color: initial;">
+                <i class="fas fa-exclamation-triangle"></i> Restrição Detectada
+            </h3>
+            <div id="msgRestricaoForce" style="margin: 15px 0; background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; border-radius: 4px; color: #856404;"></div>
+            <p>Deseja ignorar a regra acima e escalar este membro mesmo assim?</p>
+            
+            <!-- Dados ocultos para persistir a ação -->
+            <input type="hidden" id="forceNomeArrastado">
+            <input type="hidden" id="forceNomeAlvo">
+            <input type="hidden" id="forceCardOrigemId">
+            <input type="hidden" id="forceCardAlvoId">
+            <input type="hidden" id="forceSourceType">
+            <input type="hidden" id="forceIndexAlvo">
+
             <div class="modal-actions">
                 <button id="btn-force-sim" class="secondary-button" style="background: linear-gradient(45deg, #dc3545, #c82333);">Sim, Forçar Escala</button>
                 <button onclick="document.getElementById('modalConfirmacaoForce').style.display='none'">Cancelar</button>

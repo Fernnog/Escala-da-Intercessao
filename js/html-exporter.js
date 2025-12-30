@@ -9,7 +9,8 @@ import { escalaAtual } from './ui.js';
  */
 async function getLogoBase64() {
     try {
-        const response = await fetch('image/logo.png');
+        // ALTERAÇÃO PRIORIDADE 1: Caminho do logo atualizado para 'image/logo_CN.png'
+        const response = await fetch('image/logo_CN.png');
         if (!response.ok) throw new Error('Imagem não encontrada');
         const blob = await response.blob();
         return new Promise((resolve) => {
@@ -46,8 +47,7 @@ export async function gerarRelatorioHTML() {
 
     // MELHORIA: Permite ao usuário personalizar o título
     const tituloUsuario = prompt("Digite o título para o relatório (ou OK para o padrão):", subtituloPadrao);
-    const tituloFinal = tituloUsuario !== null ? tituloUsuario : subtituloPadrao; // Se cancelar, mantém null (mas aqui tratamos como manter fluxo ou cancelar? Vamos assumir que se cancelar não gera. Não, prompt retorna null no cancel. Se usuario limpar, fica vazio. Vamos usar o valor padrão se vazio).
-    // Correção lógica prompt: Se null (cancelar), aborta? Ou usa padrão? Geralmente OK usa valor. Cancel retorna null.
+    const tituloFinal = tituloUsuario !== null ? tituloUsuario : subtituloPadrao; 
     if (tituloUsuario === null) return; // Usuário cancelou
     const tituloExibicao = tituloUsuario.trim() === '' ? subtituloPadrao : tituloUsuario;
 

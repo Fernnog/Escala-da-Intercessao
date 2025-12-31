@@ -37,7 +37,8 @@ export async function gerarRelatorioHTML() {
     const primeiraData = escalaAtual[0].data;
     const nomeMes = primeiraData.toLocaleString('pt-BR', { month: 'long' });
     const ano = primeiraData.getFullYear();
-    const tituloArquivo = `Escala - ${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)} ${ano}`;
+    const nomeMesCapitalizado = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+    const tituloArquivo = `Escala_${ano}_${nomeMesCapitalizado}`;
 
     // 2. Carrega o logo
     const logoBase64 = await getLogoBase64();

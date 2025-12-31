@@ -30,12 +30,11 @@ function getStatusIconHTML(statusConfig) {
     return `<i class="fas ${statusConfig.value} status-icon ${statusConfig.classe}" title="${statusConfig.titulo}"></i>`;
 }
 
-// Armazenamento de estado para manipulação da UI
 export let escalaAtual = [];
 let justificationDataAtual = {};
 let todasAsRestricoes = [];
 let todasAsRestricoesPerm = [];
-let diaSelecionadoId = null; // Para o painel lateral
+let diaSelecionadoId = null;
 
 // =========================================================
 // === SEÇÃO DE FUNÇÕES DE ATUALIZAÇÃO DA UI (Listas) ===
@@ -126,9 +125,7 @@ function atualizarListaRestricoesPermanentes() {
 function atualizarListaEscalasSalvas() {
     const lista = document.getElementById('listaEscalasSalvas');
     if (!lista) return;
-
     escalasSalvas.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
-    
     lista.innerHTML = escalasSalvas.map(escala => `
         <li data-id="${escala.id}">
             <span>${escala.nome}</span>
@@ -170,7 +167,6 @@ export function abrirModalAcaoEscala(action, escalaId = null, escalaNome = '') {
         title.textContent = 'Confirmar Exclusão';
         body.innerHTML = `<p>Você tem certeza que deseja excluir a escala "<strong>${escalaNome}</strong>"? Esta ação não pode ser desfeita.</p>`;
     }
-
     modal.style.display = 'flex';
 }
 
@@ -187,12 +183,9 @@ export function toggleConjuge() {
     }
 }
 
-// === Função para alternar o Modo Foco ===
 export function toggleFocusMode() {
     document.body.classList.toggle('focus-mode');
-    
-    const isFocus = document.body.classList.contains('focus-mode');
-    if (isFocus) {
+    if (document.body.classList.contains('focus-mode')) {
         showToast('Modo Foco ativado. Pressione ESC para sair.', 'info');
     }
 }
@@ -201,12 +194,10 @@ export function setupUiListeners() {
     const conjugeCheck = document.getElementById('conjugeParticipa');
     if(conjugeCheck) conjugeCheck.addEventListener('change', toggleConjuge);
     
-    // Listeners Globais para Modais e Botões
     const btnFecharPainel = document.getElementById('btn-fechar-painel');
     if(btnFecharPainel) {
         btnFecharPainel.addEventListener('click', () => {
              document.getElementById('painelSuplentes').style.display = 'none';
-             // Limpa seleção visual
              document.querySelectorAll('.escala-card').forEach(c => {
                  c.style.borderColor = '';
                  c.style.boxShadow = '';
@@ -215,7 +206,6 @@ export function setupUiListeners() {
         });
     }
 
-    // Input de busca no painel lateral
     const buscaInput = document.getElementById('buscaSuplente');
     if(buscaInput) {
         buscaInput.addEventListener('input', (e) => {
@@ -228,53 +218,35 @@ export function setupUiListeners() {
         });
     }
     
-    // Botão Adicionar Externo
     const btnConfirmExterno = document.getElementById('btn-confirmar-externo');
     if(btnConfirmExterno) {
         btnConfirmExterno.addEventListener('click', window.confirmarAdicaoExterno);
     }
 
-    // === Listeners para o Modo Foco ===
     const btnEnterFocus = document.getElementById('btn-enter-focus');
     const btnExitFocus = document.getElementById('btn-exit-focus');
+    if (btnEnterFocus) btnEnterFocus.addEventListener('click', toggleFocusMode);
+    if (btnExitFocus) btnExitFocus.addEventListener('click', toggleFocusMode);
 
-    if (btnEnterFocus) {
-        btnEnterFocus.addEventListener('click', toggleFocusMode);
-    }
-    if (btnExitFocus) {
-        btnExitFocus.addEventListener('click', toggleFocusMode);
-    }
-
-    // Listener para tecla ESC para sair do Modo Foco
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && document.body.classList.contains('focus-mode')) {
             toggleFocusMode();
         }
     });
 
-    // === NOVO: Listener para o Botão "Sim, Forçar Escala" do Modal de Restrição ===
     const btnForceSim = document.getElementById('btn-force-sim');
     if (btnForceSim) {
         btnForceSim.addEventListener('click', () => {
-            // Recupera os dados salvos nos inputs ocultos
             const nomeArrastado = document.getElementById('forceNomeArrastado').value;
             const nomeAlvo = document.getElementById('forceNomeAlvo').value || null;
             const cardAlvoId = document.getElementById('forceCardAlvoId').value;
             const indexAlvo = parseInt(document.getElementById('forceIndexAlvo').value);
             const sourceType = document.getElementById('forceSourceType').value;
-
-            // Encontra o objeto do dia alvo
             const diaAlvo = escalaAtual.find(d => d.id === cardAlvoId);
-            
             if (diaAlvo) {
-                // Executa a troca ignorando a validação (pois já foi confirmada)
                 _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, sourceType === 'suplente');
                 showToast('Membro escalado manualmente (regra ignorada).', 'warning');
-            } else {
-                showToast('Erro ao recuperar o dia alvo.', 'error');
             }
-            
-            // Fecha o modal
             document.getElementById('modalConfirmacaoForce').style.display = 'none';
         });
     }
@@ -292,7 +264,7 @@ export function showToast(message, type = 'success') {
 export function exportarEscalaXLSX() {
     const listaCards = document.querySelectorAll('.escala-card:not(.hidden)');
     if (listaCards.length === 0) {
-        showToast('Não há escala visível para exportar. Verifique os filtros.', 'warning');
+        showToast('Não há escala visível para exportar.', 'warning');
         return;
     }
     const wb = XLSX.utils.book_new();
@@ -303,7 +275,7 @@ export function exportarEscalaXLSX() {
         const tipo = card.querySelector('.escala-card__header h4').textContent.trim();
         const membrosNodes = card.querySelectorAll('.membro-card');
         const nomes = Array.from(membrosNodes)
-            .filter(n => !n.classList.contains('vaga-aberta')) // Não exportar texto "Vaga em Aberto"
+            .filter(n => !n.classList.contains('vaga-aberta'))
             .map(node => node.textContent.replace(' (Ext)', '').trim());
             
         const row = [data, tipo, ...nomes];
@@ -315,23 +287,16 @@ export function exportarEscalaXLSX() {
     XLSX.writeFile(wb, 'escala_gerada.xlsx');
 }
 
-// =========================================================================
-// === SEÇÃO DE FUNÇÕES DE RENDERIZAÇÃO DA ESCALA E ANÁLISE ===
-// =========================================================================
-
 function _analisarConcentracao(diasGerados) {
     const analise = {};
     const turnosCulto = ['Quarta', 'Domingo Manhã', 'Domingo Noite'];
-
     turnosCulto.forEach(turno => {
         const membrosDoTurno = [];
         let totalParticipacoesNoTurno = 0;
         let membrosDisponiveisCount = 0;
-
         membros.forEach(membro => {
             let isDisponivel = true;
             let status = { type: 'disponivel' };
-            
             if (membro.suspensao.cultos) {
                 isDisponivel = false;
                 status = { type: 'suspenso' };
@@ -339,26 +304,18 @@ function _analisarConcentracao(diasGerados) {
                 status = { type: 'permanente' };
                 isDisponivel = false;
             }
-            
-            if (isDisponivel) {
-                membrosDisponiveisCount++;
-            }
-
-            // Conta participações (ignora vagas e convidados na contagem estatística)
+            if (isDisponivel) membrosDisponiveisCount++;
             const participacoes = diasGerados.filter(d => 
                 d.tipo === turno && 
                 d.selecionados.some(s => s.nome === membro.nome && !s.isVaga && !s.isConvidado)
             ).length;
-            
             totalParticipacoesNoTurno += participacoes;
-
             membrosDoTurno.push({
                 nome: membro.nome,
                 participacoes: participacoes,
                 status: status
             });
         });
-
         analise[turno] = {
             totalParticipacoesNoTurno: totalParticipacoesNoTurno,
             membrosDisponiveis: membrosDisponiveisCount,
@@ -371,20 +328,14 @@ function _analisarConcentracao(diasGerados) {
 export function renderAnaliseConcentracao(filtro = 'all') {
     const container = document.getElementById('diagnosticReportContainer');
     if (!container) return;
-
     const analise = _analisarConcentracao(escalaAtual);
     let contentHTML = '';
-
     if (filtro === 'all') {
         const participacoesGlobais = {};
-        membros.forEach(m => {
-            participacoesGlobais[m.nome] = { total: 0 };
-        });
-
+        membros.forEach(m => { participacoesGlobais[m.nome] = { total: 0 }; });
         escalaAtual.forEach(dia => {
             dia.selecionados.forEach(membro => {
                 if(membro.isVaga || membro.isConvidado || !membro.nome) return;
-                
                 const nomeMembro = membro.nome;
                 if (participacoesGlobais[nomeMembro]) {
                     participacoesGlobais[nomeMembro].total++;
@@ -392,101 +343,89 @@ export function renderAnaliseConcentracao(filtro = 'all') {
                 }
             });
         });
-
         const listaMembrosHtml = Object.entries(participacoesGlobais)
             .sort(([, a], [, b]) => b.total - a.total)
             .map(([nome, dados]) => {
                 let maxTurnoCount = 0;
                 const dadosTurnos = Object.entries(dados).filter(([key]) => key !== 'total');
-                
-                dadosTurnos.forEach(([, contagem]) => {
-                    if (contagem > maxTurnoCount) maxTurnoCount = contagem;
-                });
-
+                dadosTurnos.forEach(([, contagem]) => { if (contagem > maxTurnoCount) maxTurnoCount = contagem; });
                 const isUnbalanced = dados.total > 2 && (maxTurnoCount / dados.total > 0.7);
-                const balanceAlertHtml = isUnbalanced 
-                    ? `<i class="fas fa-exclamation-triangle balance-warning" title="Atenção: Participação concentrada em um único tipo de turno."></i>` 
-                    : '';
-
-                const breakdownHtml = dadosTurnos
-                    .map(([turno, contagem]) => {
-                        const indicatorClass = VISUAL_CONFIG.turnos[turno]?.indicatorClass || '';
-                        return `<span class="turn-detail" title="${contagem} participação(ões) em: ${turno}">
-                                    <span class="turn-indicator ${indicatorClass}"></span> ${contagem}
-                                </span>`;
-                    }).join('');
-
-                return `<li>
-                            <span>
-                                <strong>${nome}:</strong> ${dados.total} vez(es)
-                                ${balanceAlertHtml}
-                            </span>
-                            ${breakdownHtml ? `<div class="analysis-details">(${breakdownHtml})</div>` : ''}
-                        </li>`;
-            })
-            .join('');
-
-        contentHTML = `
-            <div class="analysis-content">
-                <div class="analise-turno-bloco">
-                    <h5>Análise Global Consolidada</h5>
-                    <p>Total de participações e detalhamento por turno. Membros externos e vagas vazias não contam para o equilíbrio.</p>
-                    <ul>${listaMembrosHtml}</ul>
-                </div>
-            </div>`;
-
+                const balanceAlertHtml = isUnbalanced ? `<i class="fas fa-exclamation-triangle balance-warning" title="Participação concentrada."></i>` : '';
+                const breakdownHtml = dadosTurnos.map(([turno, contagem]) => {
+                    const indicatorClass = VISUAL_CONFIG.turnos[turno]?.indicatorClass || '';
+                    return `<span class="turn-detail"><span class="turn-indicator ${indicatorClass}"></span> ${contagem}</span>`;
+                }).join('');
+                return `<li><span><strong>${nome}:</strong> ${dados.total} vez(es)${balanceAlertHtml}</span><div class="analysis-details">(${breakdownHtml})</div></li>`;
+            }).join('');
+        contentHTML = `<div class="analysis-content"><div class="analise-turno-bloco"><h5>Análise Global Consolidada</h5><ul>${listaMembrosHtml}</ul></div></div>`;
     } else {
         const turnosParaRenderizar = [filtro];
-        contentHTML = turnosParaRenderizar
-            .filter(turno => analise[turno])
-            .map(turno => {
-                const dados = analise[turno];
-                const listaMembrosHtml = dados.membrosDoTurno.map(membro => {
-                    const statusConfig = VISUAL_CONFIG.status[membro.status.type];
-                    const statusIcon = getStatusIconHTML(statusConfig);
-                    return `<li><span><strong>${membro.nome}:</strong> ${membro.participacoes} vez(es)</span>${statusIcon}</li>`;
-                }).join('');
-                return `<div class="analise-turno-bloco"><h5>Análise: ${turno}</h5><p>Total de participações: <strong>${dados.totalParticipacoesNoTurno}</strong> | Membros disponíveis: <strong>${dados.membrosDisponiveis}</strong></p><ul>${listaMembrosHtml || '<li>Nenhuma análise disponível.</li>'}</ul></div>`;
+        contentHTML = turnosParaRenderizar.filter(turno => analise[turno]).map(turno => {
+            const dados = analise[turno];
+            const listaMembrosHtml = dados.membrosDoTurno.map(membro => {
+                const statusIcon = getStatusIconHTML(VISUAL_CONFIG.status[membro.status.type]);
+                return `<li><span><strong>${membro.nome}:</strong> ${membro.participacoes} vez(es)</span>${statusIcon}</li>`;
             }).join('');
+            return `<div class="analise-turno-bloco"><h5>Análise: ${turno}</h5><p>Participações: <strong>${dados.totalParticipacoesNoTurno}</strong></p><ul>${listaMembrosHtml}</ul></div>`;
+        }).join('');
         contentHTML = contentHTML ? `<div class="analysis-content">${contentHTML}</div>` : '';
     }
-
     container.innerHTML = contentHTML;
     container.style.display = contentHTML ? 'block' : 'none';
 }
 
-// === NOVO: RELATÓRIO DE AUDITORIA DE CONFLITOS (PRIORIDADE 2) ===
-/**
- * Renderiza um painel de auditoria listando todos os membros que foram escalados
- * manualmente em dias onde possuem restrições (suspenso, permanente, temporária).
- */
+// =========================================================
+// === [PRIORIDADE 1 & 2] AUDITORIA DE CONFLITOS E DUPLICIDADE ===
+// =========================================================
+
 export function renderRelatorioConflitos() {
     const container = document.getElementById('conflictReportContainer');
     if (!container) return;
 
     const conflitos = [];
+    const duplicidadePorData = {}; // Mapa para contar ocorrências por dia
 
-    // Varre toda a escala atual procurando violações
     escalaAtual.forEach(dia => {
+        const dataChave = dia.data.toDateString(); // Chave única por dia civil
+        if (!duplicidadePorData[dataChave]) duplicidadePorData[dataChave] = {};
+
         dia.selecionados.forEach(membro => {
             if (!membro.nome || membro.isVaga || membro.isConvidado) return;
 
-            // Checa disponibilidade "crua"
+            // 1. Auditoria de Restrições Técnicas (Regras de disponibilidade)
             const status = checkMemberAvailability(membro, dia.tipo, dia.data);
-
             if (status.type !== 'disponivel') {
                 let motivo = '';
                 switch (status.type) {
-                    case 'suspenso': motivo = 'Suspensão Ativa'; break;
+                    case 'suspenso': motivo = 'Membro Suspenso'; break;
                     case 'permanente': motivo = 'Restrição Permanente'; break;
-                    case 'temporaria': motivo = 'Restrição Temporária (Data)'; break;
+                    case 'temporaria': motivo = 'Restrição Temporária (Férias)'; break;
                 }
-                
                 conflitos.push({
                     dia: dia.data.toLocaleDateString('pt-BR'),
                     turno: dia.tipo,
                     membro: membro.nome,
-                    motivo: motivo
+                    motivo: motivo,
+                    tipoAlerta: 'danger'
+                });
+            }
+
+            // 2. Detecção de Duplicidade (Mesmo dia, turnos diferentes)
+            duplicidadePorData[dataChave][membro.nome] = (duplicidadePorData[dataChave][membro.nome] || 0) + 1;
+        });
+    });
+
+    // Processa o mapa de duplicidade para gerar alertas
+    Object.keys(duplicidadePorData).forEach(dataChave => {
+        const dataFormatada = new Date(dataChave).toLocaleDateString('pt-BR');
+        Object.keys(duplicidadePorData[dataChave]).forEach(nome => {
+            if (duplicidadePorData[dataChave][nome] > 1) {
+                conflitos.push({
+                    dia: dataFormatada,
+                    turno: 'Multi-turnos',
+                    membro: nome,
+                    motivo: `Escalado ${duplicidadePorData[dataChave][nome]}x no mesmo dia`,
+                    tipoAlerta: 'warning' // Cor diferenciada para duplicidade
                 });
             }
         });
@@ -497,23 +436,30 @@ export function renderRelatorioConflitos() {
         return;
     }
 
-    // Renderiza a lista
     container.style.display = 'block';
     container.innerHTML = `
-        <h4><i class="fas fa-exclamation-triangle"></i> Auditoria de Conflitos (${conflitos.length})</h4>
-        <p style="font-size: 0.9em; margin-bottom: 10px;">Os seguintes membros foram escalados manualmente ignorando regras de restrição:</p>
+        <h4><i class="fas fa-exclamation-circle"></i> Auditoria de Conflitos e Duplicidade (${conflitos.length})</h4>
         <ul class="conflict-list">
-            ${conflitos.map(c => `
-                <li>
+            ${conflitos.map(c => {
+                const estilizacao = c.tipoAlerta === 'warning' 
+                    ? 'background-color: #fff3cd; border-left: 5px solid #ffc107; color: #856404;' 
+                    : 'background-color: #f8d7da; border-left: 5px solid #dc3545; color: #721c24;';
+                
+                const tagEstilo = c.tipoAlerta === 'warning' ? 'background-color: #ffc107; color: #212529;' : 'background-color: #dc3545; color: #fff;';
+
+                return `
+                <li style="${estilizacao} padding: 10px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
                     <span><strong>${c.dia} (${c.turno}):</strong> ${c.membro}</span>
-                    <span class="conflict-tag">${c.motivo}</span>
-                </li>
-            `).join('')}
-        </ul>
-    `;
+                    <span class="conflict-tag" style="${tagEstilo} font-size: 0.8em; padding: 2px 8px; border-radius: 12px; font-weight: bold;">${c.motivo}</span>
+                </li>`;
+            }).join('')}
+        </ul>`;
 }
 
-// === FUNÇÃO CRUCIAL: RENDERIZAR CARDS COM SUPORTE A VAGAS, CONVIDADOS E BOTÃO REMOVER ===
+// =========================================================
+// === RENDERIZAÇÃO DE CARDS E DRAG & DROP ===
+// =========================================================
+
 export function renderEscalaEmCards(dias) {
     const diasValidos = dias.filter(dia => dia && dia.data instanceof Date);
     escalaAtual = diasValidos;
@@ -523,88 +469,51 @@ export function renderEscalaEmCards(dias) {
 
     diasValidos.forEach(dia => {
         const turnoConfig = VISUAL_CONFIG.turnos[dia.tipo] || { cardClass: '' };
-        
-        // Adiciona onclick no card para abrir o painel lateral inteligente
         const cardHTML = `
             <div class="escala-card ${turnoConfig.cardClass}" data-id="${dia.id}" data-turno="${dia.tipo}" onclick="window.atualizarPainelSuplentes('${dia.id}')">
                 <div class="escala-card__header">
                     <h4>${dia.tipo}</h4>
-                    <span>${dia.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                    <span>${dia.data.toLocaleDateString('pt-BR')}</span>
                 </div>
                 <div class="escala-card__body">
                     ${dia.selecionados.map((m, idx) => {
-                        // Renderiza Vaga em Aberto (Vermelho)
                         if (m.isVaga || !m.nome) {
                             return `<div class="membro-card vaga-aberta" onclick="event.stopPropagation(); window.abrirModalConvidado('${dia.id}', ${idx})">
                                         <i class="fas fa-plus-circle"></i> Vaga Aberta
                                     </div>`;
                         }
-                        
-                        // Botão de remover membro (X)
-                        const removeBtn = `<button class="card-remove-btn" onclick="event.stopPropagation(); window.limparVaga('${dia.id}', ${idx})" title="Remover da escala">
-                                                <i class="fas fa-times"></i>
-                                           </button>`;
-
-                        // Renderiza Convidado (Roxo) - PRIORIDADE 2
+                        const removeBtn = `<button class="card-remove-btn" onclick="event.stopPropagation(); window.limparVaga('${dia.id}', ${idx})"><i class="fas fa-times"></i></button>`;
                         if (m.isConvidado) {
-                            return `<div class="membro-card convidado" draggable="true" data-nome="${m.nome}" data-externo="true">
-                                        <i class="fas fa-user-tag" style="color: #6a1b9a; margin-right:5px;"></i> ${m.nome}
-                                        ${removeBtn}
+                            return `<div class="membro-card convidado" draggable="true" data-nome="${m.nome}">
+                                        <i class="fas fa-user-tag"></i> ${m.nome}${removeBtn}
                                     </div>`;
                         }
-                        
-                        // Renderiza Membro Padrão com Feedback de Cônjuge (Prioridade 1)
                         const conjugeIcon = m.conjuge ? `<i class="fas fa-ring spouse-icon" title="Cônjuge: ${m.conjuge}"></i>` : '';
-
-                        return `<div class="membro-card" draggable="true" data-nome="${m.nome}">
-                                    ${conjugeIcon}${m.nome}
-                                    ${removeBtn}
-                                </div>`;
+                        return `<div class="membro-card" draggable="true" data-nome="${m.nome}">${conjugeIcon}${m.nome}${removeBtn}</div>`;
                     }).join('')}
                 </div>
             </div>`;
         container.innerHTML += cardHTML;
     });
-
-    // Aplica o feedback visual de Fadiga (Laranja) após a renderização
     aplicarFeedbackFadiga(diasValidos);
-
-    // [MODIFICAÇÃO PRIORIDADE 1] Seleção Automática do Primeiro Dia para ativar o Painel
+    renderRelatorioConflitos(); // Atualiza auditoria sempre que renderizar
     if (diasValidos.length > 0) {
-        setTimeout(() => {
-            // Garante que a função está disponível e simula a seleção do primeiro dia
-            if (typeof window.atualizarPainelSuplentes === 'function') {
-                window.atualizarPainelSuplentes(diasValidos[0].id);
-            }
-        }, 100);
+        setTimeout(() => { if (typeof window.atualizarPainelSuplentes === 'function') window.atualizarPainelSuplentes(diasValidos[0].id); }, 100);
     }
 }
 
-// === FUNÇÃO DE FEEDBACK DE FADIGA (SEQUÊNCIA DE 3) ===
 export function aplicarFeedbackFadiga(dias) {
     const cultos = dias.filter(d => ['Quarta', 'Domingo Manhã', 'Domingo Noite'].includes(d.tipo));
-    
-    // Começa do índice 2 (3º elemento) para olhar os 2 anteriores
     for (let i = 2; i < cultos.length; i++) {
         const atual = cultos[i];
-        const anterior = cultos[i-1];
-        const antepenultimo = cultos[i-2];
-
         atual.selecionados.forEach(membro => {
             if (!membro.nome || membro.isVaga || membro.isConvidado) return;
-
-            const estavaAnt = anterior.selecionados.some(m => m.nome === membro.nome);
-            const estavaAntepen = antepenultimo.selecionados.some(m => m.nome === membro.nome);
-
+            const estavaAnt = cultos[i-1].selecionados.some(m => m.nome === membro.nome);
+            const estavaAntepen = cultos[i-2].selecionados.some(m => m.nome === membro.nome);
             if (estavaAnt && estavaAntepen) {
-                const cardDiaEl = document.querySelector(`.escala-card[data-id="${atual.id}"]`);
-                if (cardDiaEl) {
-                    const membroEl = cardDiaEl.querySelector(`.membro-card[data-nome="${membro.nome}"]`);
-                    if (membroEl) {
-                        membroEl.classList.add('fadiga-alert');
-                        membroEl.title = "Alerta: 3º turno consecutivo!";
-                    }
-                }
+                const card = document.querySelector(`.escala-card[data-id="${atual.id}"]`);
+                const el = card?.querySelector(`.membro-card[data-nome="${membro.nome}"]`);
+                if (el) { el.classList.add('fadiga-alert'); el.title = "Alerta: 3º turno consecutivo!"; }
             }
         });
     }
@@ -613,44 +522,17 @@ export function aplicarFeedbackFadiga(dias) {
 export function exibirIndiceEquilibrio(justificationData) {
     const container = document.getElementById('balanceIndexContainer');
     if (!container) return;
-
     const counts = Object.values(justificationData).map(d => d.participations);
-    if (counts.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
-
-    const totalParticipations = counts.reduce((sum, count) => sum + count, 0);
-    if (totalParticipations === 0) {
-        container.style.display = 'none';
-        return;
-    }
-    
-    const mean = totalParticipations / counts.length;
-    const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
-    const stdDev = Math.sqrt(variance);
-
-    let balancePercentage = Math.max(0, 100 - (stdDev / mean) * 100);
-    balancePercentage = Math.min(100, balancePercentage);
-
+    if (counts.length === 0) { container.style.display = 'none'; return; }
+    const total = counts.reduce((sum, count) => sum + count, 0);
+    if (total === 0) { container.style.display = 'none'; return; }
+    const mean = total / counts.length;
+    const stdDev = Math.sqrt(counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length);
+    let balance = Math.min(100, Math.max(0, 100 - (stdDev / mean) * 100));
     container.style.display = 'block';
-    container.innerHTML = `
-        <h4>Índice de Equilíbrio da Escala <small>(clique para ver o relatório)</small></h4>
-        <div class="balance-bar-background">
-            <div class="balance-bar-foreground" style="width: ${balancePercentage.toFixed(2)}%;">
-                ${balancePercentage.toFixed(0)}%
-            </div>
-        </div>
-    `;
-
+    container.innerHTML = `<h4>Índice de Equilíbrio da Escala</h4><div class="balance-bar-background"><div class="balance-bar-foreground" style="width: ${balance.toFixed(2)}%;">${balance.toFixed(0)}%</div></div>`;
     const bar = container.querySelector('.balance-bar-foreground');
-    if (balancePercentage < 60) {
-        bar.style.background = 'linear-gradient(90deg, #dc3545, #ff6b6b)';
-    } else if (balancePercentage < 85) {
-        bar.style.background = 'linear-gradient(90deg, #ffc107, #ffda58)';
-    } else {
-        bar.style.background = 'linear-gradient(90deg, #28a745, #84fab0)';
-    }
+    bar.style.background = balance < 60 ? '#dc3545' : balance < 85 ? '#ffc107' : '#28a745';
 }
 
 export function renderizarFiltros(dias) {
@@ -658,241 +540,89 @@ export function renderizarFiltros(dias) {
     if (!container) return;
     const turnos = [...new Set(dias.filter(d => d.selecionados.length > 0).map(d => d.tipo))];
     if (turnos.length <= 1) { container.innerHTML = ''; return; }
-    container.innerHTML = `
-        <button class="active" data-filter="all">Todos</button>
-        ${turnos.map(turno => `<button data-filter="${turno}">${turno}</button>`).join('')}`;
-    
+    container.innerHTML = `<button class="active" data-filter="all">Todos</button>${turnos.map(t => `<button data-filter="${t}">${t}</button>`).join('')}`;
     const newContainer = container.cloneNode(true);
     container.parentNode.replaceChild(newContainer, container);
-
     newContainer.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             newContainer.querySelector('.active').classList.remove('active');
             e.target.classList.add('active');
-            const filtroSelecionado = e.target.dataset.filter;
-            
-            filtrarCards(filtroSelecionado);
-            renderAnaliseConcentracao(filtroSelecionado);
+            filtrarCards(e.target.dataset.filter);
+            renderAnaliseConcentracao(e.target.dataset.filter);
         }
     });
 }
 
 function filtrarCards(filtro) {
-    document.querySelectorAll('.escala-card').forEach(card => {
-        card.classList.toggle('hidden', filtro !== 'all' && card.dataset.turno !== filtro);
-    });
+    document.querySelectorAll('.escala-card').forEach(card => card.classList.toggle('hidden', filtro !== 'all' && card.dataset.turno !== filtro));
 }
 
 export function renderDisponibilidadeGeral() {
     const container = document.getElementById('disponibilidadeContainer');
     if (!container) return;
-
     const turnos = ['Quarta', 'Domingo Manhã', 'Domingo Noite', 'Sábado', 'Oração no WhatsApp'];
-    
     let contentHTML = '';
     turnos.forEach(turno => {
-        const listaDisponiveis = [];
-        const listaIndisponiveis = [];
-
+        const listaD = []; const listaI = [];
         membros.forEach(membro => {
-            let status = { type: 'disponivel' };
-            let isDisponivel = true;
-            
-            let suspensaoKey;
-            if (turno === 'Sábado') suspensaoKey = 'sabado';
-            else if (turno === 'Oração no WhatsApp') suspensaoKey = 'whatsapp';
-            else suspensaoKey = 'cultos';
-
-            if (membro.suspensao[suspensaoKey]) {
-                status = { type: 'suspenso' };
-                isDisponivel = false;
-            } else if (restricoesPermanentes.some(r => r.membro === membro.nome && r.diaSemana === turno)) {
-                status = { type: 'permanente' };
-                isDisponivel = false;
-            }
-
-            const statusConfig = VISUAL_CONFIG.status[status.type];
-            const statusIcon = getStatusIconHTML(statusConfig);
-            const membroHTML = `<li><span>${membro.nome}</span>${statusIcon}</li>`;
-
-            if (isDisponivel) {
-                listaDisponiveis.push(membroHTML);
-            } else {
-                listaIndisponiveis.push(membroHTML);
-            }
+            let status = { type: 'disponivel' }; let isD = true;
+            let key = turno === 'Sábado' ? 'sabado' : turno === 'Oração no WhatsApp' ? 'whatsapp' : 'cultos';
+            if (membro.suspensao[key]) { status = { type: 'suspenso' }; isD = false; }
+            else if (restricoesPermanentes.some(r => r.membro === membro.nome && r.diaSemana === turno)) { status = { type: 'permanente' }; isD = false; }
+            const icon = getStatusIconHTML(VISUAL_CONFIG.status[status.type]);
+            const html = `<li><span>${membro.nome}</span>${icon}</li>`;
+            if (isD) listaD.push(html); else listaI.push(html);
         });
-
-        contentHTML += `
-            <div class="disponibilidade-turno-bloco">
-                <h5>Turno: ${turno}</h5>
-                <div class="list-container">
-                    <div class="list-wrapper disponiveis">
-                        <h6>Disponíveis (${listaDisponiveis.length})</h6>
-                        <ul>${listaDisponiveis.join('') || '<li>Nenhum membro disponível.</li>'}</ul>
-                    </div>
-                    <div class="list-wrapper indisponiveis">
-                        <h6>Indisponíveis (${listaIndisponiveis.length})</h6>
-                        <ul>${listaIndisponiveis.join('') || '<li>Nenhum membro indisponível.</li>'}</ul>
-                    </div>
-                </div>
-            </div>
-        `;
+        contentHTML += `<div class="disponibilidade-turno-bloco"><h5>Turno: ${turno}</h5><div class="list-container"><div class="list-wrapper disponiveis"><h6>Disponíveis</h6><ul>${listaD.join('')}</ul></div><div class="list-wrapper indisponiveis"><h6>Indisponíveis</h6><ul>${listaI.join('')}</ul></div></div></div>`;
     });
-
     container.innerHTML = contentHTML;
 }
 
-// =========================================================================
-// === SEÇÃO PAINEL LATERAL INTELIGENTE & MODAIS ===
-// =========================================================================
-
-// Função global para ser chamada pelo onclick do Card
 window.atualizarPainelSuplentes = function(cardId) {
     diaSelecionadoId = cardId;
     const dia = escalaAtual.find(d => d.id === cardId);
     if (!dia) return;
-
     const painel = document.getElementById('painelSuplentes');
     const lista = document.getElementById('listaSuplentes');
-    const contexto = document.getElementById('painel-contexto');
-
-    // [MODIFICAÇÃO UX] Feedback Visual de Seleção
-    // 1. Limpa destaque de todos os cards
-    document.querySelectorAll('.escala-card').forEach(c => {
-        c.style.borderColor = '';
-        c.style.boxShadow = '';
-        c.style.transform = '';
-        c.style.zIndex = '';
-    });
-
-    // 2. Aplica destaque ao card selecionado
+    document.querySelectorAll('.escala-card').forEach(c => { c.style.borderColor = ''; c.style.boxShadow = ''; c.style.transform = ''; });
     const cardAtivo = document.querySelector(`.escala-card[data-id="${cardId}"]`);
-    if (cardAtivo) {
-        // Estilos inline aplicados via JS para não depender de alteração no CSS
-        cardAtivo.style.borderColor = '#4682b4'; 
-        cardAtivo.style.boxShadow = '0 0 15px rgba(70, 130, 180, 0.4)';
-        cardAtivo.style.transform = 'scale(1.02)';
-        cardAtivo.style.zIndex = '5'; // Garante que fique sobre os outros no zoom
-        cardAtivo.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-    
+    if (cardAtivo) { cardAtivo.style.borderColor = '#4682b4'; cardAtivo.style.boxShadow = '0 0 15px rgba(70, 130, 180, 0.4)'; cardAtivo.style.transform = 'scale(1.02)'; }
     if(painel) painel.style.display = 'block';
-    if(contexto) contexto.textContent = `Para: ${dia.tipo} (${dia.data.toLocaleDateString()})`;
-    
-    // Quem já está escalado neste dia?
-    const escaladosNesteDia = dia.selecionados.map(s => s.nome).filter(n => n);
-    
-    // Ordenar sugestões: Menos participações primeiro
-    const sugestoes = membros
-        .filter(m => !escaladosNesteDia.includes(m.nome))
-        .sort((a, b) => {
-             const partsA = justificationDataAtual[a.nome] ? justificationDataAtual[a.nome].participations : 0;
-             const partsB = justificationDataAtual[b.nome] ? justificationDataAtual[b.nome].participations : 0;
-             return partsA - partsB;
-        });
-
+    const sugestoes = membros.filter(m => !dia.selecionados.some(s => s.nome === m.nome)).sort((a, b) => (justificationDataAtual[a.nome]?.participations || 0) - (justificationDataAtual[b.nome]?.participations || 0));
     if(lista) {
         lista.innerHTML = sugestoes.map(m => {
-            const parts = justificationDataAtual[m.nome] ? justificationDataAtual[m.nome].participations : 0;
-            
-            // Lógica de Ícones EXATOS conforme legenda do rodapé (PRIORIDADE 3)
-            const iconesStatus = [];
-            let isRestrito = false;
-
-            // 1. Suspensão
-            let suspKey = 'cultos'; 
-            if (dia.tipo === 'Sábado') suspKey = 'sabado';
-            else if (dia.tipo === 'Oração no WhatsApp') suspKey = 'whatsapp';
-            
-            if (m.suspensao && m.suspensao[suspKey]) {
-                iconesStatus.push('<i class="fas fa-pause-circle" style="color: #ffc107;" title="Suspenso"></i>');
-                isRestrito = true;
-            }
-
-            // 2. Restrição Permanente
-            if (todasAsRestricoesPerm.some(r => r.membro === m.nome && r.diaSemana === dia.tipo)) {
-                iconesStatus.push('<span title="Restrição Permanente">⛔</span>');
-                isRestrito = true;
-            }
-
-            // 3. Restrição Temporária (Férias)
-            const diaAlvo = new Date(dia.data); diaAlvo.setHours(0,0,0,0);
-            if (todasAsRestricoes.some(r => {
-                const inicio = new Date(r.inicio); inicio.setHours(0,0,0,0);
-                const fim = new Date(r.fim); fim.setHours(0,0,0,0);
-                return r.membro === m.nome && diaAlvo >= inicio && diaAlvo <= fim;
-            })) {
-                iconesStatus.push('<span title="Restrição Temporária">🚫</span>');
-                isRestrito = true;
-            }
-
-            // Se não tiver nenhuma restrição, ícone verde
-            if (iconesStatus.length === 0) {
-                iconesStatus.push('<i class="fas fa-check-circle" style="color:#28a745"></i>');
-            }
-            
-            return `
-                <li draggable="true" class="suplente-item ${isRestrito ? 'com-restricao' : ''}" data-nome="${m.nome}" title="${isRestrito ? 'Possui Restrições' : 'Disponível'}">
-                    <span>
-                        <span class="suplente-status-icons">${iconesStatus.join(' ')}</span>
-                        ${m.nome}
-                    </span>
-                    <span class="suplente-badge ${parts <= 1 ? 'low-part' : ''}">${parts}x</span>
-                </li>
-            `;
+            const parts = justificationDataAtual[m.nome]?.participations || 0;
+            let icones = []; let isR = false;
+            let key = dia.tipo === 'Sábado' ? 'sabado' : dia.tipo === 'Oração no WhatsApp' ? 'whatsapp' : 'cultos';
+            if (m.suspensao[key]) { icones.push('<i class="fas fa-pause-circle" style="color:#ffc107"></i>'); isR = true; }
+            if (todasAsRestricoesPerm.some(r => r.membro === m.nome && r.diaSemana === dia.tipo)) { icones.push('⛔'); isR = true; }
+            const dA = new Date(dia.data); dA.setHours(0,0,0,0);
+            if (todasAsRestricoes.some(r => { const i = new Date(r.inicio); i.setHours(0,0,0,0); const f = new Date(r.fim); f.setHours(0,0,0,0); return r.membro === m.nome && dA >= i && dA <= f; })) { icones.push('🚫'); isR = true; }
+            if (icones.length === 0) icones.push('<i class="fas fa-check-circle" style="color:#28a745"></i>');
+            return `<li draggable="true" class="suplente-item ${isR ? 'com-restricao' : ''}" data-nome="${m.nome}"><span class="suplente-status-icons">${icones.join(' ')}</span>${m.nome}<span class="suplente-badge">${parts}x</span></li>`;
         }).join('');
-        
-        // Re-atachar drag events para a nova lista
         setupDragParaSuplentes();
     }
 };
 
 function setupDragParaSuplentes() {
-    const items = document.querySelectorAll('.suplente-item');
-    items.forEach(item => {
-        item.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', item.dataset.nome);
-            e.dataTransfer.setData('source-type', 'suplente'); // Marca que veio do painel
-        });
-    });
+    document.querySelectorAll('.suplente-item').forEach(item => { item.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', item.dataset.nome); e.dataTransfer.setData('source-type', 'suplente'); }); });
 }
 
-// === NOVO: Função para limpar uma vaga (Transformar membro em Vaga Aberta) - PRIORIDADE 2 ===
 window.limparVaga = function(diaId, index) {
-    if (!confirm("Tem certeza que deseja remover este membro da escala?")) return;
-
+    if (!confirm("Remover membro?")) return;
     const dia = escalaAtual.find(d => d.id === diaId);
-    if (!dia || !dia.selecionados[index]) return;
-
-    const membroRemovido = dia.selecionados[index];
-
-    // Se for um membro oficial (não convidado e não vaga), decrementa estatística
-    if (membroRemovido.nome && !membroRemovido.isConvidado && !membroRemovido.isVaga) {
-        if (justificationDataAtual[membroRemovido.nome]) {
-            justificationDataAtual[membroRemovido.nome].participations--;
-        }
-    }
-
-    // Reseta o slot para Vaga Aberta
-    dia.selecionados[index] = { nome: null, isVaga: true, genero: null };
-
-    // Re-renderiza a UI
+    if (!dia) return;
+    const m = dia.selecionados[index];
+    if (m.nome && !m.isConvidado && justificationDataAtual[m.nome]) justificationDataAtual[m.nome].participations--;
+    dia.selecionados[index] = { nome: null, isVaga: true };
     renderEscalaEmCards(escalaAtual);
     exibirIndiceEquilibrio(justificationDataAtual);
-    
-    // Atualiza estatísticas do painel lateral se estiver aberto
     if (diaSelecionadoId) window.atualizarPainelSuplentes(diaSelecionadoId);
-
-    // Re-configura Drag & Drop para os novos elementos DOM
     configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
-
-    // Atualiza relatório de conflitos (caso a remoção resolva algo)
-    renderRelatorioConflitos();
-
-    showToast('Membro removido da escala.', 'warning');
+    showToast('Membro removido.');
 };
 
-// Modais Globais
 window.abrirModalConvidado = function(diaId, indiceVaga) {
     document.getElementById('modalNomeExterno').style.display = 'flex';
     document.getElementById('externoDiaId').value = diaId;
@@ -905,190 +635,69 @@ window.confirmarAdicaoExterno = function() {
     const nome = document.getElementById('inputNomeExterno').value;
     const diaId = document.getElementById('externoDiaId').value;
     const idx = parseInt(document.getElementById('externoIndiceVaga').value);
-    
     if(!nome) return;
-
     const dia = escalaAtual.find(d => d.id === diaId);
-    if(dia && dia.selecionados[idx]) {
-        dia.selecionados[idx] = { 
-            nome: nome, 
-            isConvidado: true,
-            genero: 'X' 
-        };
+    if(dia) {
+        dia.selecionados[idx] = { nome: nome, isConvidado: true, genero: 'X' };
         renderEscalaEmCards(escalaAtual);
         exibirIndiceEquilibrio(justificationDataAtual);
-
-        // ATUALIZA PAINEL LATERAL (Sincroniza os contadores)
         if (diaSelecionadoId) window.atualizarPainelSuplentes(diaSelecionadoId);
-
-        // RECONECTA EVENTOS DE DRAG & DROP APÓS ATUALIZAÇÃO DOM
         configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
-
         document.getElementById('modalNomeExterno').style.display = 'none';
-        showToast(`Convidado ${nome} adicionado.`, 'success');
+        showToast(`Convidado ${nome} adicionado.`);
     }
 };
 
-// =========================================================================
-// === SEÇÃO DE DRAG & DROP & TROCA MANUAL ===
-// =========================================================================
-
-// Helper para executar a troca fisicamente após validações
 function _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, isFromSuplente) {
-    const membroArrastadoObj = membros.find(m => m.nome === nomeArrastado);
-    
-    // Se veio de outra vaga da escala, precisamos remover de lá
+    const mObj = membros.find(m => m.nome === nomeArrastado);
     if (!isFromSuplente) {
-        // Encontrar onde ele estava
         escalaAtual.forEach(d => {
             const idx = d.selecionados.findIndex(m => m.nome === nomeArrastado);
-            if (idx > -1) {
-                // Se estamos trocando um por outro
-                if (nomeAlvo && !diaAlvo.selecionados[indexAlvo].isVaga) {
-                     // Lógica de Swap simplificada: Quem sai volta pro banco
-                     d.selecionados[idx] = { nome: null, isVaga: true };
-                } else {
-                     d.selecionados[idx] = { nome: null, isVaga: true };
-                }
-            }
+            if (idx > -1) d.selecionados[idx] = { nome: null, isVaga: true };
         });
     }
-
-    // Colocar no destino
-    diaAlvo.selecionados[indexAlvo] = membroArrastadoObj;
-
-    // Atualizar estatísticas
+    if (nomeAlvo && justificationDataAtual[nomeAlvo]) justificationDataAtual[nomeAlvo].participations--;
+    diaAlvo.selecionados[indexAlvo] = mObj;
     if (justificationDataAtual[nomeArrastado]) justificationDataAtual[nomeArrastado].participations++;
-    if (nomeAlvo && !diaAlvo.selecionados[indexAlvo].isVaga && justificationDataAtual[nomeAlvo]) {
-        justificationDataAtual[nomeAlvo].participations--;
-    }
-
     renderEscalaEmCards(escalaAtual);
     exibirIndiceEquilibrio(justificationDataAtual);
-    
-    const filtroAtivo = document.querySelector('#escala-filtros button.active')?.dataset.filter || 'all';
-    renderAnaliseConcentracao(filtroAtivo);
-
-    // ATUALIZA PAINEL LATERAL (Sincroniza os contadores)
     if (diaSelecionadoId) window.atualizarPainelSuplentes(diaSelecionadoId);
-
-    // RECONECTA EVENTOS DE DRAG & DROP APÓS ATUALIZAÇÃO DOM
     configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
-    
-    // === ATUALIZAÇÃO PRIORIDADE 2: Renderiza Relatório de Conflitos após troca ===
-    renderRelatorioConflitos();
-
-    showToast('Alteração realizada com sucesso.', 'success');
+    showToast('Alteração realizada.');
 }
 
-// === MODIFICAÇÃO PRIORIDADE 1: Lógica de Interceptação para Confirmação ===
-function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, sourceType) {
-    const diaAlvo = escalaAtual.find(d => d.id === cardAlvoId);
-    if (!diaAlvo) return;
-    
-    // Indice do alvo
-    let indexAlvo = -1;
-    if (nomeAlvo) {
-        // Se arrastou sobre um nome
-        indexAlvo = diaAlvo.selecionados.findIndex(m => m.nome === nomeAlvo);
-    } else {
-        // Se arrastou sobre uma Vaga em Aberto (target class .vaga-aberta)
-        indexAlvo = diaAlvo.selecionados.findIndex(m => m.isVaga);
-    }
-    
-    if (indexAlvo === -1) return; // Não achou onde soltar
-
-    // Validações Básicas
-    const membroArrastadoObj = membros.find(m => m.nome === nomeArrastado);
-    if (!membroArrastadoObj) return;
-
-    // Impede duplicação no mesmo dia (isso não é permitido nem com Force)
-    if (diaAlvo.selecionados.some(m => m.nome === nomeArrastado)) {
-        showToast(`${nomeArrastado} já está neste dia.`, 'warning');
-        return;
-    }
-
-    // --- NOVA LÓGICA DE VALIDAÇÃO COM INTERCEPTAÇÃO ---
-    // Verifica disponibilidade antes de mover
-    const status = checkMemberAvailability(membroArrastadoObj, diaAlvo.tipo, diaAlvo.data);
-
+function remanejarMembro(nomeA, nomeAlvo, cardO, cardAlvoId, sourceType) {
+    const diaA = escalaAtual.find(d => d.id === cardAlvoId);
+    if (!diaA) return;
+    let idx = nomeAlvo ? diaA.selecionados.findIndex(m => m.nome === nomeAlvo) : diaA.selecionados.findIndex(m => m.isVaga);
+    if (idx === -1) return;
+    const mObj = membros.find(m => m.nome === nomeA);
+    if (diaA.selecionados.some(m => m.nome === nomeA)) { showToast(`${nomeA} já está neste dia.`, 'warning'); return; }
+    const status = checkMemberAvailability(mObj, diaA.tipo, diaA.data);
     if (status.type !== 'disponivel') {
-        // Monta mensagem de erro detalhada
-        let msg = '';
-        if (status.type === 'suspenso') msg = `O membro <strong>${nomeArrastado}</strong> está marcado como SUSPENSO para ${diaAlvo.tipo}.`;
-        else if (status.type === 'permanente') msg = `O membro <strong>${nomeArrastado}</strong> possui restrição permanente para ${diaAlvo.tipo}.`;
-        else if (status.type === 'temporaria') msg = `O membro <strong>${nomeArrastado}</strong> possui restrição de data (Férias/Ausência) no dia ${diaAlvo.data.toLocaleDateString()}.`;
-
-        // Preenche os dados ocultos para execução posterior se confirmado
         const modal = document.getElementById('modalConfirmacaoForce');
-        document.getElementById('msgRestricaoForce').innerHTML = msg;
-        
-        document.getElementById('forceNomeArrastado').value = nomeArrastado;
+        let msg = status.type === 'suspenso' ? 'Membro Suspenso' : status.type === 'permanente' ? 'Restrição Permanente' : 'Férias/Ausência';
+        document.getElementById('msgRestricaoForce').innerHTML = `<strong>${nomeA}</strong>: ${msg}`;
+        document.getElementById('forceNomeArrastado').value = nomeA;
         document.getElementById('forceNomeAlvo').value = nomeAlvo || '';
         document.getElementById('forceCardAlvoId').value = cardAlvoId;
-        document.getElementById('forceIndexAlvo').value = indexAlvo;
+        document.getElementById('forceIndexAlvo').value = idx;
         document.getElementById('forceSourceType').value = sourceType;
-
-        // Abre o Modal de Interceptação
         modal.style.display = 'flex';
-        
-        // INTERROMPE A EXECUÇÃO AQUI (não executa a troca)
-        return; 
+        return;
     }
-
-    // Se estiver disponível (sem restrições), executa direto
-    _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, sourceType === 'suplente');
+    _executarTroca(nomeA, nomeAlvo, diaA, idx, sourceType === 'suplente');
 }
 
 export function configurarDragAndDrop(dias, justificationData, restricoes, restricoesPermanentes) {
-    escalaAtual = dias;
-    justificationDataAtual = justificationData;
-    todasAsRestricoes = restricoes;
-    todasAsRestricoesPerm = restricoesPermanentes;
-
-    // Delegate dragover/drop para o container, ou reatachar a cada render?
-    // Como re-renderizamos tudo, reatachar é mais seguro para os elementos novos.
-    
-    const membrosCards = document.querySelectorAll('.membro-card, .vaga-aberta'); // Inclui vagas como drop targets
-    
-    membrosCards.forEach(card => {
+    escalaAtual = dias; justificationDataAtual = justificationData; todasAsRestricoes = restricoes; todasAsRestricoesPerm = restricoesPermanentes;
+    document.querySelectorAll('.membro-card, .vaga-aberta').forEach(card => {
         if (!card.classList.contains('vaga-aberta') && !card.classList.contains('convidado')) {
-            card.addEventListener('dragstart', (e) => {
-                e.target.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', e.target.dataset.nome);
-                e.dataTransfer.setData('card-id', e.target.closest('.escala-card').dataset.id);
-                e.dataTransfer.setData('source-type', 'escala');
-            });
-            card.addEventListener('dragend', (e) => {
-                e.target.classList.remove('dragging');
-            });
+            card.addEventListener('dragstart', (e) => { e.target.classList.add('dragging'); e.dataTransfer.setData('text/plain', e.target.dataset.nome); e.dataTransfer.setData('card-id', e.target.closest('.escala-card').dataset.id); e.dataTransfer.setData('source-type', 'escala'); });
+            card.addEventListener('dragend', (e) => e.target.classList.remove('dragging'));
         }
-
-        card.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (!e.target.classList.contains('dragging')) {
-                e.target.classList.add('drag-over');
-            }
-        });
-
-        card.addEventListener('dragleave', (e) => {
-            e.target.classList.remove('drag-over');
-        });
-
-        card.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.target.classList.remove('drag-over');
-            
-            const nomeArrastado = e.dataTransfer.getData('text/plain');
-            const cardOrigemId = e.dataTransfer.getData('card-id');
-            const sourceType = e.dataTransfer.getData('source-type');
-            
-            const nomeAlvo = e.target.dataset.nome || null; // Null se for vaga
-            const cardAlvoId = e.target.closest('.escala-card').dataset.id;
-            
-            if (nomeArrastado === nomeAlvo) return;
-            
-            remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, sourceType);
-        });
+        card.addEventListener('dragover', (e) => { e.preventDefault(); e.target.classList.add('drag-over'); });
+        card.addEventListener('dragleave', (e) => e.target.classList.remove('drag-over'));
+        card.addEventListener('drop', (e) => { e.preventDefault(); e.target.classList.remove('drag-over'); remanejarMembro(e.dataTransfer.getData('text/plain'), e.target.dataset.nome || null, e.dataTransfer.getData('card-id'), e.target.closest('.escala-card').dataset.id, e.dataTransfer.getData('source-type')); });
     });
 }

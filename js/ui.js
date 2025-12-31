@@ -1,4 +1,4 @@
-// js/ui.js
+/* === js/ui.js (VERSÃO COMPLETA ATUALIZADA) === */
 
 import { membros, restricoes, restricoesPermanentes, escalasSalvas } from './data-manager.js';
 import { saoCompativeis, checkMemberAvailability } from './availability.js';
@@ -125,7 +125,9 @@ function atualizarListaRestricoesPermanentes() {
 function atualizarListaEscalasSalvas() {
     const lista = document.getElementById('listaEscalasSalvas');
     if (!lista) return;
+
     escalasSalvas.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+    
     lista.innerHTML = escalasSalvas.map(escala => `
         <li data-id="${escala.id}">
             <span>${escala.nome}</span>
@@ -167,6 +169,7 @@ export function abrirModalAcaoEscala(action, escalaId = null, escalaNome = '') {
         title.textContent = 'Confirmar Exclusão';
         body.innerHTML = `<p>Você tem certeza que deseja excluir a escala "<strong>${escalaNome}</strong>"? Esta ação não pode ser desfeita.</p>`;
     }
+
     modal.style.display = 'flex';
 }
 
@@ -185,7 +188,8 @@ export function toggleConjuge() {
 
 export function toggleFocusMode() {
     document.body.classList.toggle('focus-mode');
-    if (document.body.classList.contains('focus-mode')) {
+    const isFocus = document.body.classList.contains('focus-mode');
+    if (isFocus) {
         showToast('Modo Foco ativado. Pressione ESC para sair.', 'info');
     }
 }
@@ -225,6 +229,7 @@ export function setupUiListeners() {
 
     const btnEnterFocus = document.getElementById('btn-enter-focus');
     const btnExitFocus = document.getElementById('btn-exit-focus');
+
     if (btnEnterFocus) btnEnterFocus.addEventListener('click', toggleFocusMode);
     if (btnExitFocus) btnExitFocus.addEventListener('click', toggleFocusMode);
 
@@ -242,6 +247,7 @@ export function setupUiListeners() {
             const cardAlvoId = document.getElementById('forceCardAlvoId').value;
             const indexAlvo = parseInt(document.getElementById('forceIndexAlvo').value);
             const sourceType = document.getElementById('forceSourceType').value;
+
             const diaAlvo = escalaAtual.find(d => d.id === cardAlvoId);
             if (diaAlvo) {
                 _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, sourceType === 'suplente');
@@ -264,7 +270,7 @@ export function showToast(message, type = 'success') {
 export function exportarEscalaXLSX() {
     const listaCards = document.querySelectorAll('.escala-card:not(.hidden)');
     if (listaCards.length === 0) {
-        showToast('Não há escala visível para exportar.', 'warning');
+        showToast('Não há escala visível para exportar. Verifique os filtros.', 'warning');
         return;
     }
     const wb = XLSX.utils.book_new();
@@ -290,10 +296,12 @@ export function exportarEscalaXLSX() {
 function _analisarConcentracao(diasGerados) {
     const analise = {};
     const turnosCulto = ['Quarta', 'Domingo Manhã', 'Domingo Noite'];
+
     turnosCulto.forEach(turno => {
         const membrosDoTurno = [];
         let totalParticipacoesNoTurno = 0;
         let membrosDisponiveisCount = 0;
+
         membros.forEach(membro => {
             let isDisponivel = true;
             let status = { type: 'disponivel' };
@@ -310,12 +318,9 @@ function _analisarConcentracao(diasGerados) {
                 d.selecionados.some(s => s.nome === membro.nome && !s.isVaga && !s.isConvidado)
             ).length;
             totalParticipacoesNoTurno += participacoes;
-            membrosDoTurno.push({
-                nome: membro.nome,
-                participacoes: participacoes,
-                status: status
-            });
+            membrosDoTurno.push({ nome: membro.nome, participacoes: participacoes, status: status });
         });
+
         analise[turno] = {
             totalParticipacoesNoTurno: totalParticipacoesNoTurno,
             membrosDisponiveis: membrosDisponiveisCount,
@@ -350,12 +355,12 @@ export function renderAnaliseConcentracao(filtro = 'all') {
                 const dadosTurnos = Object.entries(dados).filter(([key]) => key !== 'total');
                 dadosTurnos.forEach(([, contagem]) => { if (contagem > maxTurnoCount) maxTurnoCount = contagem; });
                 const isUnbalanced = dados.total > 2 && (maxTurnoCount / dados.total > 0.7);
-                const balanceAlertHtml = isUnbalanced ? `<i class="fas fa-exclamation-triangle balance-warning" title="Participação concentrada."></i>` : '';
+                const balanceAlertHtml = isUnbalanced ? `<i class="fas fa-exclamation-triangle balance-warning" title="Atenção: Participação concentrada em um único tipo de turno."></i>` : '';
                 const breakdownHtml = dadosTurnos.map(([turno, contagem]) => {
                     const indicatorClass = VISUAL_CONFIG.turnos[turno]?.indicatorClass || '';
-                    return `<span class="turn-detail"><span class="turn-indicator ${indicatorClass}"></span> ${contagem}</span>`;
+                    return `<span class="turn-detail" title="${contagem} participação(ões) em: ${turno}"><span class="turn-indicator ${indicatorClass}"></span> ${contagem}</span>`;
                 }).join('');
-                return `<li><span><strong>${nome}:</strong> ${dados.total} vez(es)${balanceAlertHtml}</span><div class="analysis-details">(${breakdownHtml})</div></li>`;
+                return `<li><span><strong>${nome}:</strong> ${dados.total} vez(es)${balanceAlertHtml}</span>${breakdownHtml ? `<div class="analysis-details">(${breakdownHtml})</div>` : ''}</li>`;
             }).join('');
         contentHTML = `<div class="analysis-content"><div class="analise-turno-bloco"><h5>Análise Global Consolidada</h5><ul>${listaMembrosHtml}</ul></div></div>`;
     } else {
@@ -363,10 +368,10 @@ export function renderAnaliseConcentracao(filtro = 'all') {
         contentHTML = turnosParaRenderizar.filter(turno => analise[turno]).map(turno => {
             const dados = analise[turno];
             const listaMembrosHtml = dados.membrosDoTurno.map(membro => {
-                const statusIcon = getStatusIconHTML(VISUAL_CONFIG.status[membro.status.type]);
-                return `<li><span><strong>${membro.nome}:</strong> ${membro.participacoes} vez(es)</span>${statusIcon}</li>`;
+                const statusConfig = VISUAL_CONFIG.status[membro.status.type];
+                return `<li><span><strong>${membro.nome}:</strong> ${membro.participacoes} vez(es)</span>${getStatusIconHTML(statusConfig)}</li>`;
             }).join('');
-            return `<div class="analise-turno-bloco"><h5>Análise: ${turno}</h5><p>Participações: <strong>${dados.totalParticipacoesNoTurno}</strong></p><ul>${listaMembrosHtml}</ul></div>`;
+            return `<div class="analise-turno-bloco"><h5>Análise: ${turno}</h5><p>Total: <strong>${dados.totalParticipacoesNoTurno}</strong> | Apto: <strong>${dados.membrosDisponiveis}</strong></p><ul>${listaMembrosHtml}</ul></div>`;
         }).join('');
         contentHTML = contentHTML ? `<div class="analysis-content">${contentHTML}</div>` : '';
     }
@@ -374,58 +379,48 @@ export function renderAnaliseConcentracao(filtro = 'all') {
     container.style.display = contentHTML ? 'block' : 'none';
 }
 
-// =========================================================
-// === [PRIORIDADE 1 & 2] AUDITORIA DE CONFLITOS E DUPLICIDADE ===
-// =========================================================
-
+// === ATUALIZAÇÃO PRIORIDADE 2: RELATÓRIO DE AUDITORIA DE CONFLITOS E DUPLICIDADES ===
 export function renderRelatorioConflitos() {
     const container = document.getElementById('conflictReportContainer');
     if (!container) return;
-
     const conflitos = [];
-    const duplicidadePorData = {}; // Mapa para contar ocorrências por dia
+    const contagemDiaria = {}; // Rastreia duplicidades no mesmo dia
 
     escalaAtual.forEach(dia => {
-        const dataChave = dia.data.toDateString(); // Chave única por dia civil
-        if (!duplicidadePorData[dataChave]) duplicidadePorData[dataChave] = {};
+        const dataChave = dia.data.toDateString();
+        if (!contagemDiaria[dataChave]) contagemDiaria[dataChave] = {};
 
         dia.selecionados.forEach(membro => {
             if (!membro.nome || membro.isVaga || membro.isConvidado) return;
+            
+            // 1. Detecção de Duplicidade (Mesmo dia)
+            contagemDiaria[dataChave][membro.nome] = (contagemDiaria[dataChave][membro.nome] || 0) + 1;
 
-            // 1. Auditoria de Restrições Técnicas (Regras de disponibilidade)
+            // 2. Detecção de Restrições/Suspensão
             const status = checkMemberAvailability(membro, dia.tipo, dia.data);
             if (status.type !== 'disponivel') {
-                let motivo = '';
-                switch (status.type) {
-                    case 'suspenso': motivo = 'Membro Suspenso'; break;
-                    case 'permanente': motivo = 'Restrição Permanente'; break;
-                    case 'temporaria': motivo = 'Restrição Temporária (Férias)'; break;
-                }
                 conflitos.push({
                     dia: dia.data.toLocaleDateString('pt-BR'),
                     turno: dia.tipo,
                     membro: membro.nome,
-                    motivo: motivo,
-                    tipoAlerta: 'danger'
+                    motivo: status.type === 'suspenso' ? 'Suspensão' : 'Restrição',
+                    tipoAlerta: 'regra'
                 });
             }
-
-            // 2. Detecção de Duplicidade (Mesmo dia, turnos diferentes)
-            duplicidadePorData[dataChave][membro.nome] = (duplicidadePorData[dataChave][membro.nome] || 0) + 1;
         });
     });
 
-    // Processa o mapa de duplicidade para gerar alertas
-    Object.keys(duplicidadePorData).forEach(dataChave => {
-        const dataFormatada = new Date(dataChave).toLocaleDateString('pt-BR');
-        Object.keys(duplicidadePorData[dataChave]).forEach(nome => {
-            if (duplicidadePorData[dataChave][nome] > 1) {
+    // Processa contagem diária para gerar alertas de duplicidade
+    Object.keys(contagemDiaria).forEach(dataStr => {
+        const dataFormatada = new Date(dataStr).toLocaleDateString('pt-BR');
+        Object.keys(contagemDiaria[dataStr]).forEach(nome => {
+            if (contagemDiaria[dataStr][nome] > 1) {
                 conflitos.push({
                     dia: dataFormatada,
                     turno: 'Multi-turnos',
                     membro: nome,
-                    motivo: `Escalado ${duplicidadePorData[dataChave][nome]}x no mesmo dia`,
-                    tipoAlerta: 'warning' // Cor diferenciada para duplicidade
+                    motivo: 'Escalado mais de uma vez no mesmo dia',
+                    tipoAlerta: 'duplicidade'
                 });
             }
         });
@@ -438,27 +433,20 @@ export function renderRelatorioConflitos() {
 
     container.style.display = 'block';
     container.innerHTML = `
-        <h4><i class="fas fa-exclamation-circle"></i> Auditoria de Conflitos e Duplicidade (${conflitos.length})</h4>
+        <h4><i class="fas fa-exclamation-triangle"></i> Auditoria de Conflitos e Alertas (${conflitos.length})</h4>
         <ul class="conflict-list">
             ${conflitos.map(c => {
-                const estilizacao = c.tipoAlerta === 'warning' 
-                    ? 'background-color: #fff3cd; border-left: 5px solid #ffc107; color: #856404;' 
-                    : 'background-color: #f8d7da; border-left: 5px solid #dc3545; color: #721c24;';
-                
-                const tagEstilo = c.tipoAlerta === 'warning' ? 'background-color: #ffc107; color: #212529;' : 'background-color: #dc3545; color: #fff;';
-
+                const isDuplicidade = c.tipoAlerta === 'duplicidade';
+                const styleItem = isDuplicidade ? 'background-color: #fff0f0; border-left-color: #dc3545;' : '';
+                const styleTag = isDuplicidade ? 'background-color: #dc3545;' : '';
                 return `
-                <li style="${estilizacao} padding: 10px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                <li style="${styleItem}">
                     <span><strong>${c.dia} (${c.turno}):</strong> ${c.membro}</span>
-                    <span class="conflict-tag" style="${tagEstilo} font-size: 0.8em; padding: 2px 8px; border-radius: 12px; font-weight: bold;">${c.motivo}</span>
+                    <span class="conflict-tag" style="${styleTag}">${c.motivo}</span>
                 </li>`;
             }).join('')}
         </ul>`;
 }
-
-// =========================================================
-// === RENDERIZAÇÃO DE CARDS E DRAG & DROP ===
-// =========================================================
 
 export function renderEscalaEmCards(dias) {
     const diasValidos = dias.filter(dia => dia && dia.data instanceof Date);
@@ -478,25 +466,26 @@ export function renderEscalaEmCards(dias) {
                 <div class="escala-card__body">
                     ${dia.selecionados.map((m, idx) => {
                         if (m.isVaga || !m.nome) {
-                            return `<div class="membro-card vaga-aberta" onclick="event.stopPropagation(); window.abrirModalConvidado('${dia.id}', ${idx})">
-                                        <i class="fas fa-plus-circle"></i> Vaga Aberta
-                                    </div>`;
+                            return `<div class="membro-card vaga-aberta" onclick="event.stopPropagation(); window.abrirModalConvidado('${dia.id}', ${idx})"><i class="fas fa-plus-circle"></i> Vaga Aberta</div>`;
                         }
                         const removeBtn = `<button class="card-remove-btn" onclick="event.stopPropagation(); window.limparVaga('${dia.id}', ${idx})"><i class="fas fa-times"></i></button>`;
                         if (m.isConvidado) {
-                            return `<div class="membro-card convidado" draggable="true" data-nome="${m.nome}">
-                                        <i class="fas fa-user-tag"></i> ${m.nome}${removeBtn}
-                                    </div>`;
+                            return `<div class="membro-card convidado" draggable="true" data-nome="${m.nome}" data-externo="true"><i class="fas fa-user-tag"></i> ${m.nome}${removeBtn}</div>`;
                         }
                         const conjugeIcon = m.conjuge ? `<i class="fas fa-ring spouse-icon" title="Cônjuge: ${m.conjuge}"></i>` : '';
-                        return `<div class="membro-card" draggable="true" data-nome="${m.nome}">${conjugeIcon}${m.nome}${removeBtn}</div>`;
+                        
+                        // PRIORIDADE 3: INDICADOR DE DUPLICIDADE VISUAL NO CARD
+                        const isDuplicado = diasValidos.some(d => d.data.toDateString() === dia.data.toDateString() && d.id !== dia.id && d.selecionados.some(s => s.nome === m.nome));
+                        const duplicidadeIcon = isDuplicado ? `<i class="fas fa-copy" style="color: #dc3545; margin-left: 5px;" title="Aviso: Escalado em outro turno no mesmo dia"></i>` : '';
+
+                        return `<div class="membro-card" draggable="true" data-nome="${m.nome}">${conjugeIcon}${m.nome}${duplicidadeIcon}${removeBtn}</div>`;
                     }).join('')}
                 </div>
             </div>`;
         container.innerHTML += cardHTML;
     });
+
     aplicarFeedbackFadiga(diasValidos);
-    renderRelatorioConflitos(); // Atualiza auditoria sempre que renderizar
     if (diasValidos.length > 0) {
         setTimeout(() => { if (typeof window.atualizarPainelSuplentes === 'function') window.atualizarPainelSuplentes(diasValidos[0].id); }, 100);
     }
@@ -506,14 +495,16 @@ export function aplicarFeedbackFadiga(dias) {
     const cultos = dias.filter(d => ['Quarta', 'Domingo Manhã', 'Domingo Noite'].includes(d.tipo));
     for (let i = 2; i < cultos.length; i++) {
         const atual = cultos[i];
+        const anterior = cultos[i-1];
+        const antepenultimo = cultos[i-2];
         atual.selecionados.forEach(membro => {
             if (!membro.nome || membro.isVaga || membro.isConvidado) return;
-            const estavaAnt = cultos[i-1].selecionados.some(m => m.nome === membro.nome);
-            const estavaAntepen = cultos[i-2].selecionados.some(m => m.nome === membro.nome);
-            if (estavaAnt && estavaAntepen) {
-                const card = document.querySelector(`.escala-card[data-id="${atual.id}"]`);
-                const el = card?.querySelector(`.membro-card[data-nome="${membro.nome}"]`);
-                if (el) { el.classList.add('fadiga-alert'); el.title = "Alerta: 3º turno consecutivo!"; }
+            if (anterior.selecionados.some(m => m.nome === membro.nome) && antepenultimo.selecionados.some(m => m.nome === membro.nome)) {
+                const cardDiaEl = document.querySelector(`.escala-card[data-id="${atual.id}"]`);
+                if (cardDiaEl) {
+                    const membroEl = cardDiaEl.querySelector(`.membro-card[data-nome="${membro.nome}"]`);
+                    if (membroEl) { membroEl.classList.add('fadiga-alert'); membroEl.title = "Alerta: 3º turno consecutivo!"; }
+                }
             }
         });
     }
@@ -524,15 +515,17 @@ export function exibirIndiceEquilibrio(justificationData) {
     if (!container) return;
     const counts = Object.values(justificationData).map(d => d.participations);
     if (counts.length === 0) { container.style.display = 'none'; return; }
-    const total = counts.reduce((sum, count) => sum + count, 0);
-    if (total === 0) { container.style.display = 'none'; return; }
-    const mean = total / counts.length;
+    const totalParticipations = counts.reduce((sum, count) => sum + count, 0);
+    if (totalParticipations === 0) { container.style.display = 'none'; return; }
+    const mean = totalParticipations / counts.length;
     const stdDev = Math.sqrt(counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length);
-    let balance = Math.min(100, Math.max(0, 100 - (stdDev / mean) * 100));
+    let balancePercentage = Math.min(100, Math.max(0, 100 - (stdDev / mean) * 100));
     container.style.display = 'block';
-    container.innerHTML = `<h4>Índice de Equilíbrio da Escala</h4><div class="balance-bar-background"><div class="balance-bar-foreground" style="width: ${balance.toFixed(2)}%;">${balance.toFixed(0)}%</div></div>`;
+    container.innerHTML = `<h4>Índice de Equilíbrio da Escala</h4><div class="balance-bar-background"><div class="balance-bar-foreground" style="width: ${balancePercentage.toFixed(2)}%;">${balancePercentage.toFixed(0)}%</div></div>`;
     const bar = container.querySelector('.balance-bar-foreground');
-    bar.style.background = balance < 60 ? '#dc3545' : balance < 85 ? '#ffc107' : '#28a745';
+    if (balancePercentage < 60) bar.style.background = 'linear-gradient(90deg, #dc3545, #ff6b6b)';
+    else if (balancePercentage < 85) bar.style.background = 'linear-gradient(90deg, #ffc107, #ffda58)';
+    else bar.style.background = 'linear-gradient(90deg, #28a745, #84fab0)';
 }
 
 export function renderizarFiltros(dias) {
@@ -540,21 +533,18 @@ export function renderizarFiltros(dias) {
     if (!container) return;
     const turnos = [...new Set(dias.filter(d => d.selecionados.length > 0).map(d => d.tipo))];
     if (turnos.length <= 1) { container.innerHTML = ''; return; }
-    container.innerHTML = `<button class="active" data-filter="all">Todos</button>${turnos.map(t => `<button data-filter="${t}">${t}</button>`).join('')}`;
+    container.innerHTML = `<button class="active" data-filter="all">Todos</button>${turnos.map(turno => `<button data-filter="${turno}">${turno}</button>`).join('')}`;
     const newContainer = container.cloneNode(true);
     container.parentNode.replaceChild(newContainer, container);
     newContainer.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             newContainer.querySelector('.active').classList.remove('active');
             e.target.classList.add('active');
-            filtrarCards(e.target.dataset.filter);
-            renderAnaliseConcentracao(e.target.dataset.filter);
+            const f = e.target.dataset.filter;
+            document.querySelectorAll('.escala-card').forEach(card => card.classList.toggle('hidden', f !== 'all' && card.dataset.turno !== f));
+            renderAnaliseConcentracao(f);
         }
     });
-}
-
-function filtrarCards(filtro) {
-    document.querySelectorAll('.escala-card').forEach(card => card.classList.toggle('hidden', filtro !== 'all' && card.dataset.turno !== filtro));
 }
 
 export function renderDisponibilidadeGeral() {
@@ -563,17 +553,18 @@ export function renderDisponibilidadeGeral() {
     const turnos = ['Quarta', 'Domingo Manhã', 'Domingo Noite', 'Sábado', 'Oração no WhatsApp'];
     let contentHTML = '';
     turnos.forEach(turno => {
-        const listaD = []; const listaI = [];
+        const listaDisponiveis = [];
+        const listaIndisponiveis = [];
         membros.forEach(membro => {
-            let status = { type: 'disponivel' }; let isD = true;
-            let key = turno === 'Sábado' ? 'sabado' : turno === 'Oração no WhatsApp' ? 'whatsapp' : 'cultos';
-            if (membro.suspensao[key]) { status = { type: 'suspenso' }; isD = false; }
+            let status = { type: 'disponivel' };
+            let isD = true;
+            let sk = (turno === 'Sábado') ? 'sabado' : (turno === 'Oração no WhatsApp' ? 'whatsapp' : 'cultos');
+            if (membro.suspensao[sk]) { status = { type: 'suspenso' }; isD = false; }
             else if (restricoesPermanentes.some(r => r.membro === membro.nome && r.diaSemana === turno)) { status = { type: 'permanente' }; isD = false; }
-            const icon = getStatusIconHTML(VISUAL_CONFIG.status[status.type]);
-            const html = `<li><span>${membro.nome}</span>${icon}</li>`;
-            if (isD) listaD.push(html); else listaI.push(html);
+            const h = `<li><span>${membro.nome}</span>${getStatusIconHTML(VISUAL_CONFIG.status[status.type])}</li>`;
+            if (isD) listaDisponiveis.push(h); else listaIndisponiveis.push(h);
         });
-        contentHTML += `<div class="disponibilidade-turno-bloco"><h5>Turno: ${turno}</h5><div class="list-container"><div class="list-wrapper disponiveis"><h6>Disponíveis</h6><ul>${listaD.join('')}</ul></div><div class="list-wrapper indisponiveis"><h6>Indisponíveis</h6><ul>${listaI.join('')}</ul></div></div></div>`;
+        contentHTML += `<div class="disponibilidade-turno-bloco"><h5>Turno: ${turno}</h5><div class="list-container"><div class="list-wrapper disponiveis"><h6>D (${listaDisponiveis.length})</h6><ul>${listaDisponiveis.join('')}</ul></div><div class="list-wrapper indisponiveis"><h6>I (${listaIndisponiveis.length})</h6><ul>${listaIndisponiveis.join('')}</ul></div></div></div>`;
     });
     container.innerHTML = contentHTML;
 }
@@ -584,43 +575,44 @@ window.atualizarPainelSuplentes = function(cardId) {
     if (!dia) return;
     const painel = document.getElementById('painelSuplentes');
     const lista = document.getElementById('listaSuplentes');
-    document.querySelectorAll('.escala-card').forEach(c => { c.style.borderColor = ''; c.style.boxShadow = ''; c.style.transform = ''; });
+    const contexto = document.getElementById('painel-contexto');
+    document.querySelectorAll('.escala-card').forEach(c => { c.style.borderColor = ''; c.style.boxShadow = ''; c.style.transform = ''; c.style.zIndex = ''; });
     const cardAtivo = document.querySelector(`.escala-card[data-id="${cardId}"]`);
-    if (cardAtivo) { cardAtivo.style.borderColor = '#4682b4'; cardAtivo.style.boxShadow = '0 0 15px rgba(70, 130, 180, 0.4)'; cardAtivo.style.transform = 'scale(1.02)'; }
+    if (cardAtivo) { cardAtivo.style.borderColor = '#4682b4'; cardAtivo.style.boxShadow = '0 0 15px rgba(70, 130, 180, 0.4)'; cardAtivo.style.transform = 'scale(1.02)'; cardAtivo.style.zIndex = '5'; cardAtivo.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     if(painel) painel.style.display = 'block';
-    const sugestoes = membros.filter(m => !dia.selecionados.some(s => s.nome === m.nome)).sort((a, b) => (justificationDataAtual[a.nome]?.participations || 0) - (justificationDataAtual[b.nome]?.participations || 0));
+    if(contexto) contexto.textContent = `Para: ${dia.tipo} (${dia.data.toLocaleDateString()})`;
+    const escaladosNesteDia = dia.selecionados.map(s => s.nome).filter(n => n);
+    const sugestoes = membros.filter(m => !escaladosNesteDia.includes(m.nome)).sort((a, b) => (justificationDataAtual[a.nome]?.participations || 0) - (justificationDataAtual[b.nome]?.participations || 0));
     if(lista) {
         lista.innerHTML = sugestoes.map(m => {
             const parts = justificationDataAtual[m.nome]?.participations || 0;
-            let icones = []; let isR = false;
-            let key = dia.tipo === 'Sábado' ? 'sabado' : dia.tipo === 'Oração no WhatsApp' ? 'whatsapp' : 'cultos';
-            if (m.suspensao[key]) { icones.push('<i class="fas fa-pause-circle" style="color:#ffc107"></i>'); isR = true; }
+            const icones = [];
+            let isR = false;
+            let sk = (dia.tipo === 'Sábado') ? 'sabado' : (dia.tipo === 'Oração no WhatsApp' ? 'whatsapp' : 'cultos');
+            if (m.suspensao?.[sk]) { icones.push('<i class="fas fa-pause-circle" style="color: #ffc107;"></i>'); isR = true; }
             if (todasAsRestricoesPerm.some(r => r.membro === m.nome && r.diaSemana === dia.tipo)) { icones.push('⛔'); isR = true; }
             const dA = new Date(dia.data); dA.setHours(0,0,0,0);
             if (todasAsRestricoes.some(r => { const i = new Date(r.inicio); i.setHours(0,0,0,0); const f = new Date(r.fim); f.setHours(0,0,0,0); return r.membro === m.nome && dA >= i && dA <= f; })) { icones.push('🚫'); isR = true; }
             if (icones.length === 0) icones.push('<i class="fas fa-check-circle" style="color:#28a745"></i>');
-            return `<li draggable="true" class="suplente-item ${isR ? 'com-restricao' : ''}" data-nome="${m.nome}"><span class="suplente-status-icons">${icones.join(' ')}</span>${m.nome}<span class="suplente-badge">${parts}x</span></li>`;
+            return `<li draggable="true" class="suplente-item ${isR ? 'com-restricao' : ''}" data-nome="${m.nome}"><span class="suplente-status-icons">${icones.join(' ')}</span>${m.nome}<span class="suplente-badge ${parts <= 1 ? 'low-part' : ''}">${parts}x</span></li>`;
         }).join('');
-        setupDragParaSuplentes();
+        document.querySelectorAll('.suplente-item').forEach(item => { item.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', item.dataset.nome); e.dataTransfer.setData('source-type', 'suplente'); }); });
     }
 };
-
-function setupDragParaSuplentes() {
-    document.querySelectorAll('.suplente-item').forEach(item => { item.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', item.dataset.nome); e.dataTransfer.setData('source-type', 'suplente'); }); });
-}
 
 window.limparVaga = function(diaId, index) {
     if (!confirm("Remover membro?")) return;
     const dia = escalaAtual.find(d => d.id === diaId);
-    if (!dia) return;
-    const m = dia.selecionados[index];
-    if (m.nome && !m.isConvidado && justificationDataAtual[m.nome]) justificationDataAtual[m.nome].participations--;
-    dia.selecionados[index] = { nome: null, isVaga: true };
+    if (!dia || !dia.selecionados[index]) return;
+    const mR = dia.selecionados[index];
+    if (mR.nome && !mR.isConvidado && !mR.isVaga) { if (justificationDataAtual[mR.nome]) justificationDataAtual[mR.nome].participations--; }
+    dia.selecionados[index] = { nome: null, isVaga: true, genero: null };
     renderEscalaEmCards(escalaAtual);
     exibirIndiceEquilibrio(justificationDataAtual);
     if (diaSelecionadoId) window.atualizarPainelSuplentes(diaSelecionadoId);
     configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
-    showToast('Membro removido.');
+    renderRelatorioConflitos();
+    showToast('Membro removido.', 'warning');
 };
 
 window.abrirModalConvidado = function(diaId, indiceVaga) {
@@ -632,72 +624,70 @@ window.abrirModalConvidado = function(diaId, indiceVaga) {
 };
 
 window.confirmarAdicaoExterno = function() {
-    const nome = document.getElementById('inputNomeExterno').value;
-    const diaId = document.getElementById('externoDiaId').value;
+    const n = document.getElementById('inputNomeExterno').value;
+    const dI = document.getElementById('externoDiaId').value;
     const idx = parseInt(document.getElementById('externoIndiceVaga').value);
-    if(!nome) return;
-    const dia = escalaAtual.find(d => d.id === diaId);
-    if(dia) {
-        dia.selecionados[idx] = { nome: nome, isConvidado: true, genero: 'X' };
+    if(!n) return;
+    const dia = escalaAtual.find(d => d.id === dI);
+    if(dia && dia.selecionados[idx]) {
+        dia.selecionados[idx] = { nome: n, isConvidado: true, genero: 'X' };
         renderEscalaEmCards(escalaAtual);
         exibirIndiceEquilibrio(justificationDataAtual);
         if (diaSelecionadoId) window.atualizarPainelSuplentes(diaSelecionadoId);
         configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
         document.getElementById('modalNomeExterno').style.display = 'none';
-        showToast(`Convidado ${nome} adicionado.`);
+        showToast(`Convidado ${n} adicionado.`, 'success');
     }
 };
 
-function _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, isFromSuplente) {
-    const mObj = membros.find(m => m.nome === nomeArrastado);
-    if (!isFromSuplente) {
-        escalaAtual.forEach(d => {
-            const idx = d.selecionados.findIndex(m => m.nome === nomeArrastado);
-            if (idx > -1) d.selecionados[idx] = { nome: null, isVaga: true };
-        });
-    }
-    if (nomeAlvo && justificationDataAtual[nomeAlvo]) justificationDataAtual[nomeAlvo].participations--;
-    diaAlvo.selecionados[indexAlvo] = mObj;
-    if (justificationDataAtual[nomeArrastado]) justificationDataAtual[nomeArrastado].participations++;
+function _executarTroca(nArr, nAlv, dAlv, iAlv, isS) {
+    const mArrO = membros.find(m => m.nome === nArr);
+    if (!isS) { escalaAtual.forEach(d => { const idx = d.selecionados.findIndex(m => m.nome === nArr); if (idx > -1) d.selecionados[idx] = { nome: null, isVaga: true }; }); }
+    dAlv.selecionados[iAlv] = mArrO;
+    if (justificationDataAtual[nArr]) justificationDataAtual[nArr].participations++;
+    if (nAlv && !dAlv.selecionados[iAlv].isVaga && justificationDataAtual[nAlv]) justificationDataAtual[nAlv].participations--;
     renderEscalaEmCards(escalaAtual);
     exibirIndiceEquilibrio(justificationDataAtual);
+    const fA = document.querySelector('#escala-filtros button.active')?.dataset.filter || 'all';
+    renderAnaliseConcentracao(fA);
     if (diaSelecionadoId) window.atualizarPainelSuplentes(diaSelecionadoId);
     configurarDragAndDrop(escalaAtual, justificationDataAtual, todasAsRestricoes, todasAsRestricoesPerm);
-    showToast('Alteração realizada.');
+    renderRelatorioConflitos();
+    showToast('Alteração realizada.', 'success');
 }
 
-function remanejarMembro(nomeA, nomeAlvo, cardO, cardAlvoId, sourceType) {
-    const diaA = escalaAtual.find(d => d.id === cardAlvoId);
-    if (!diaA) return;
-    let idx = nomeAlvo ? diaA.selecionados.findIndex(m => m.nome === nomeAlvo) : diaA.selecionados.findIndex(m => m.isVaga);
-    if (idx === -1) return;
-    const mObj = membros.find(m => m.nome === nomeA);
-    if (diaA.selecionados.some(m => m.nome === nomeA)) { showToast(`${nomeA} já está neste dia.`, 'warning'); return; }
-    const status = checkMemberAvailability(mObj, diaA.tipo, diaA.data);
+function remanejarMembro(nArr, nAlv, cO, cA, sT) {
+    const dAlv = escalaAtual.find(d => d.id === cA);
+    if (!dAlv) return;
+    let iAlv = nAlv ? dAlv.selecionados.findIndex(m => m.nome === nAlv) : dAlv.selecionados.findIndex(m => m.isVaga);
+    if (iAlv === -1) return;
+    const mArrO = membros.find(m => m.nome === nArr);
+    if (!mArrO) return;
+    if (dAlv.selecionados.some(m => m.nome === nArr)) { showToast(`${nArr} já está neste dia.`, 'warning'); return; }
+    const status = checkMemberAvailability(mArrO, dAlv.tipo, dAlv.data);
     if (status.type !== 'disponivel') {
-        const modal = document.getElementById('modalConfirmacaoForce');
-        let msg = status.type === 'suspenso' ? 'Membro Suspenso' : status.type === 'permanente' ? 'Restrição Permanente' : 'Férias/Ausência';
-        document.getElementById('msgRestricaoForce').innerHTML = `<strong>${nomeA}</strong>: ${msg}`;
-        document.getElementById('forceNomeArrastado').value = nomeA;
-        document.getElementById('forceNomeAlvo').value = nomeAlvo || '';
-        document.getElementById('forceCardAlvoId').value = cardAlvoId;
-        document.getElementById('forceIndexAlvo').value = idx;
-        document.getElementById('forceSourceType').value = sourceType;
-        modal.style.display = 'flex';
-        return;
+        let msg = `O membro <strong>${nArr}</strong> possui restrição (${status.type}) para este momento.`;
+        document.getElementById('msgRestricaoForce').innerHTML = msg;
+        document.getElementById('forceNomeArrastado').value = nArr;
+        document.getElementById('forceNomeAlvo').value = nAlv || '';
+        document.getElementById('forceCardAlvoId').value = cA;
+        document.getElementById('forceIndexAlvo').value = iAlv;
+        document.getElementById('forceSourceType').value = sT;
+        document.getElementById('modalConfirmacaoForce').style.display = 'flex';
+        return; 
     }
-    _executarTroca(nomeA, nomeAlvo, diaA, idx, sourceType === 'suplente');
+    _executarTroca(nArr, nAlv, dAlv, iAlv, sT === 'suplente');
 }
 
-export function configurarDragAndDrop(dias, justificationData, restricoes, restricoesPermanentes) {
-    escalaAtual = dias; justificationDataAtual = justificationData; todasAsRestricoes = restricoes; todasAsRestricoesPerm = restricoesPermanentes;
+export function configurarDragAndDrop(d, jD, r, rP) {
+    escalaAtual = d; justificationDataAtual = jD; todasAsRestricoes = r; todasAsRestricoesPerm = rP;
     document.querySelectorAll('.membro-card, .vaga-aberta').forEach(card => {
         if (!card.classList.contains('vaga-aberta') && !card.classList.contains('convidado')) {
             card.addEventListener('dragstart', (e) => { e.target.classList.add('dragging'); e.dataTransfer.setData('text/plain', e.target.dataset.nome); e.dataTransfer.setData('card-id', e.target.closest('.escala-card').dataset.id); e.dataTransfer.setData('source-type', 'escala'); });
-            card.addEventListener('dragend', (e) => e.target.classList.remove('dragging'));
+            card.addEventListener('dragend', (e) => { e.target.classList.remove('dragging'); });
         }
         card.addEventListener('dragover', (e) => { e.preventDefault(); e.target.classList.add('drag-over'); });
-        card.addEventListener('dragleave', (e) => e.target.classList.remove('drag-over'));
-        card.addEventListener('drop', (e) => { e.preventDefault(); e.target.classList.remove('drag-over'); remanejarMembro(e.dataTransfer.getData('text/plain'), e.target.dataset.nome || null, e.dataTransfer.getData('card-id'), e.target.closest('.escala-card').dataset.id, e.dataTransfer.getData('source-type')); });
+        card.addEventListener('dragleave', (e) => { e.target.classList.remove('drag-over'); });
+        card.addEventListener('drop', (e) => { e.preventDefault(); e.target.classList.remove('drag-over'); const nArr = e.dataTransfer.getData('text/plain'); const cO = e.dataTransfer.getData('card-id'); const sT = e.dataTransfer.getData('source-type'); const nAlv = e.target.dataset.nome || null; const cA = e.target.closest('.escala-card').dataset.id; if (nArr === nAlv) return; remanejarMembro(nArr, nAlv, cO, cA, sT); });
     });
 }

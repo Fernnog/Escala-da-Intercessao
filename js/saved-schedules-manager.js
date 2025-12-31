@@ -1,7 +1,17 @@
 // js/saved-schedules-manager.js
 
 import { salvarDados, adicionarEscalaSalva, excluirEscalaSalva, atualizarNomeEscalaSalva, escalasSalvas, membros, restricoes, restricoesPermanentes } from './data-manager.js';
-import { showToast, atualizarTodasAsListas, abrirModalAcaoEscala, renderEscalaEmCards, configurarDragAndDrop, escalaAtual, exibirIndiceEquilibrio } from './ui.js';
+import { 
+    showToast, 
+    atualizarTodasAsListas, 
+    abrirModalAcaoEscala, 
+    renderEscalaEmCards, 
+    configurarDragAndDrop, 
+    escalaAtual, 
+    exibirIndiceEquilibrio,
+    renderRelatorioConflitos,   // [CORREÇÃO] Importado para exibir auditoria ao carregar
+    renderAnaliseConcentracao   // [CORREÇÃO] Importado para exibir diagnósticos ao carregar
+} from './ui.js';
 
 /**
  * Fecha o modal de ações da escala (Salvar, Renomear, Excluir).
@@ -96,6 +106,16 @@ export function setupSavedSchedulesListeners(auth, database) {
                 configurarDragAndDrop(diasComDatasValidas, justificationDataRecalculado, restricoes, restricoesPermanentes);
                 exibirIndiceEquilibrio(justificationDataRecalculado);
 
+                // [CORREÇÃO] Chama explicitamente os renderizadores de relatório que estavam faltando
+                renderRelatorioConflitos();
+                renderAnaliseConcentracao('all');
+
+                // Garante que o container de diagnóstico apareça se houver dados
+                const diagnosticContainer = document.getElementById('diagnosticReportContainer');
+                if (diagnosticContainer && diagnosticContainer.innerHTML.trim() !== '') {
+                    diagnosticContainer.style.display = 'block';
+                }
+
                 showToast(`Escala "${escala.nome}" carregada com sucesso.`, 'success');
                 document.getElementById('resultadoEscala').scrollIntoView({ behavior: 'smooth' });
                 _updateLoadedScheduleIndicator(escala.nome);
@@ -157,6 +177,14 @@ export function setupSavedSchedulesListeners(auth, database) {
             document.getElementById('balanceIndexContainer').style.display = 'none';
             document.getElementById('escala-filtros').innerHTML = '';
             document.getElementById('diagnosticReportContainer').style.display = 'none';
+            
+            // Limpa também o container de conflitos ao fechar
+            const conflictContainer = document.getElementById('conflictReportContainer');
+            if (conflictContainer) {
+                conflictContainer.style.display = 'none';
+                conflictContainer.innerHTML = '';
+            }
+
             _updateLoadedScheduleIndicator(null);
             showToast('Visualização da escala limpa.', 'info');
         });

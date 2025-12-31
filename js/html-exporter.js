@@ -4,9 +4,12 @@ import { escalaAtual } from './ui.js';
 
 /**
  * Converte a imagem do logo local para Base64.
+ * Isso permite que a imagem seja exibida corretamente na nova aba (blob URL)
+ * sem depender de caminhos relativos que podem quebrar.
  */
 async function getLogoBase64() {
     try {
+        // Caminho do logo atualizado
         const response = await fetch('image/logo_CN.png');
         if (!response.ok) throw new Error('Imagem não encontrada');
         const blob = await response.blob();
@@ -17,7 +20,7 @@ async function getLogoBase64() {
         });
     } catch (e) {
         console.warn('Não foi possível carregar o logo para o relatório:', e);
-        return ''; 
+        return ''; // Retorna vazio se falhar, permitindo que o relatório seja gerado sem logo
     }
 }
 
@@ -34,12 +37,13 @@ export async function gerarRelatorioHTML() {
     const primeiraData = escalaAtual[0].data;
     const nomeMes = primeiraData.toLocaleString('pt-BR', { month: 'long' });
     const ano = primeiraData.getFullYear();
+    // Ex: "Escala - Janeiro 2026"
     const tituloArquivo = `Escala - ${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)} ${ano}`;
 
     // 2. Carrega o logo
     const logoBase64 = await getLogoBase64();
 
-    // 3. Mapeamento de Cores por Turno (Tons Pastéis)
+    // 3. Mapeamento de Cores por Turno (Tons Pastéis para visualização agradável)
     const coresTurno = {
         'Quarta': '#e0f7fa',          // Azul Claro
         'Domingo Manhã': '#fff3cd',   // Amarelo Claro
@@ -51,6 +55,7 @@ export async function gerarRelatorioHTML() {
     // 4. Monta as linhas da tabela
     const rows = escalaAtual.map(dia => {
         const dataFormatada = dia.data.toLocaleDateString('pt-BR');
+        // Exibe o dia da semana (ex: "domingo", "quarta-feira")
         const diaSemanaTexto = dia.data.toLocaleDateString('pt-BR', { weekday: 'long' });
         
         // Estilização dos Nomes com separador fino
@@ -59,7 +64,7 @@ export async function gerarRelatorioHTML() {
             if (m.isVaga) return '<div class="name-item vaga">(Vaga em Aberto)</div>';
             if (m.isConvidado) nomeDisplay += ' <small>(Convidado)</small>';
             
-            // Adiciona classe 'last' se for o último para remover a borda
+            // Adiciona classe 'last' se for o último para remover a borda inferior
             const classeExtra = index === arr.length - 1 ? 'last' : '';
             return `<div class="name-item ${classeExtra}">${nomeDisplay}</div>`;
         }).join('');
@@ -75,7 +80,8 @@ export async function gerarRelatorioHTML() {
                 <td style="background-color: ${corFundoTurno}; font-weight: bold; color: #444;">
                     ${dia.tipo}
                 </td>
-                <td style="padding: 0;"> <!-- Padding 0 para que as divs internas controlem o espaçamento -->
+                <td style="padding: 0;"> 
+                    <!-- Padding 0 na célula para que as divs internas controlem o espaçamento e as bordas -->
                     <div class="names-container">
                         ${nomesHTML}
                     </div>
@@ -84,17 +90,17 @@ export async function gerarRelatorioHTML() {
         `;
     }).join('');
 
-    // 5. Monta o HTML Completo
+    // 5. Monta o HTML Completo com o novo Design de Cabeçalho (Box/Cápsula)
     const htmlContent = `
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
-        <title>${tituloArquivo}</title> <!-- Define o nome do PDF -->
+        <title>${tituloArquivo}</title> <!-- Define o nome sugerido ao salvar como PDF -->
         <style>
             body { 
                 font-family: 'Segoe UI', Arial, sans-serif; 
-                padding: 20px; 
+                padding: 30px; 
                 background: #fff; 
                 color: #333;
             }
@@ -103,21 +109,68 @@ export async function gerarRelatorioHTML() {
                 max-width: 1000px; 
                 margin: 0 auto; 
             }
+            
+            /* --- NOVO ESTILO DO CABEÇALHO (Cápsula) --- */
+            .header-container {
+                display: flex;
+                align-items: stretch; /* Garante altura igual para logo e texto */
+                margin-bottom: 30px;
+                border: 2px solid #2c3e50; /* Borda externa geral formando o retângulo */
+                border-radius: 6px; /* Leve arredondamento nas pontas */
+                overflow: hidden; /* Garante que o conteúdo respeite o arredondamento */
+            }
+
+            .header-logo {
+                background-color: #000; /* Fundo preto para destacar o logo branco */
+                width: 120px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 10px;
+                flex-shrink: 0;
+                border-right: 1px solid #2c3e50; /* Separação sutil interna */
+            }
+            
+            .header-logo img { 
+                max-height: 80px; 
+                max-width: 100%;
+                object-fit: contain;
+            }
+
+            .header-content {
+                flex-grow: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                background-color: white;
+            }
+
+            .header-title {
+                margin: 0;
+                font-size: 24px;
+                text-transform: uppercase;
+                color: #2c3e50;
+                font-weight: 800;
+                letter-spacing: 1px;
+            }
+
+            .header-subtitle {
+                margin: 5px 0 0 0;
+                font-size: 16px;
+                color: #7f8c8d;
+                font-weight: 400;
+                text-transform: uppercase;
+            }
+            /* --- FIM DO NOVO ESTILO --- */
+
+            /* Tabela Principal */
             table { 
                 width: 100%; 
                 border-collapse: collapse; 
                 border: 1px solid #dee2e6; 
                 margin-top: 20px;
             }
-            
-            /* Cabeçalho */
-            .header-table { width: 100%; margin-bottom: 20px; border: none; }
-            .header-logo img { max-height: 80px; }
-            .header-text { text-align: center; }
-            .header-text h1 { margin: 0; font-size: 22px; text-transform: uppercase; color: #2c3e50; }
-            .header-text h2 { margin: 5px 0 0 0; font-size: 16px; color: #7f8c8d; font-weight: normal; }
-
-            /* Tabela Principal */
             th { 
                 background-color: #2c3e50; 
                 color: white; 
@@ -133,14 +186,15 @@ export async function gerarRelatorioHTML() {
                 vertical-align: middle;
             }
             
-            /* Estilo dos Nomes */
+            /* Estilo dos Nomes e Separadores */
             .names-container { padding: 5px; }
             .name-item {
                 padding: 6px 0;
                 border-bottom: 1px solid #e9ecef; /* Linha fina e delicada */
                 font-size: 15px;
+                color: #212529;
             }
-            .name-item.last { border-bottom: none; }
+            .name-item.last { border-bottom: none; } /* Remove borda do último nome */
             .name-item.vaga { color: #dc3545; font-style: italic; }
             
             /* Rodapé */
@@ -153,28 +207,29 @@ export async function gerarRelatorioHTML() {
                 padding-top: 10px;
             }
 
+            /* Ajustes de Impressão */
             @media print {
                 body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 th { background-color: #2c3e50 !important; color: white !important; }
-                /* Força a impressão das cores de fundo */
+                .header-container { border: 2px solid #2c3e50 !important; }
+                /* Garante que as cores de fundo apareçam na impressão */
             }
         </style>
     </head>
     <body>
         <div class="report-container">
-            <!-- Cabeçalho Layout Tabela para Alinhamento -->
-            <table class="header-table" style="border: none;">
-                <tr style="background: none;">
-                    <td style="width: 100px; border: none; padding: 0;" class="header-logo">
-                        ${logoBase64 ? `<img src="${logoBase64}">` : ''}
-                    </td>
-                    <td style="border: none; text-align: center;" class="header-text">
-                        <h1>Ministério de Intercessão</h1>
-                        <h2>${tituloArquivo}</h2>
-                    </td>
-                    <td style="width: 100px; border: none;"></td> <!-- Espaçador para equilibrar logo -->
-                </tr>
-            </table>
+            
+            <!-- NOVO CABEÇALHO EM CÁPSULA -->
+            <div class="header-container">
+                <div class="header-logo">
+                    ${logoBase64 ? `<img src="${logoBase64}">` : ''}
+                </div>
+                <div class="header-content">
+                    <h1 class="header-title">Ministério de Intercessão</h1>
+                    <!-- Exibe apenas o subtítulo (ex: Janeiro 2026) -->
+                    <h2 class="header-subtitle">${tituloArquivo.replace('Escala - ', '')}</h2>
+                </div>
+            </div>
 
             <table>
                 <thead>
@@ -193,19 +248,26 @@ export async function gerarRelatorioHTML() {
                 Documento gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}
             </div>
         </div>
+
         <script>
-            window.onload = function() { setTimeout(function() { window.print(); }, 500); };
+            // Aciona a impressão automaticamente após carregar
+            window.onload = function() {
+                setTimeout(function() {
+                    window.print();
+                }, 500);
+            };
         </script>
     </body>
     </html>
     `;
 
+    // 6. Abre a nova janela e escreve o conteúdo
     const newWindow = window.open('', '_blank');
     if (newWindow) {
         newWindow.document.open();
         newWindow.document.write(htmlContent);
         newWindow.document.close();
     } else {
-        alert('O bloqueador de pop-ups impediu a abertura do relatório.');
+        alert('O bloqueador de pop-ups impediu a abertura do relatório. Por favor, permita pop-ups para este site.');
     }
 }

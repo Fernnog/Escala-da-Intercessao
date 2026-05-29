@@ -90,6 +90,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-salvar-suspensao').addEventListener('click', () => salvarSuspensao(auth, database));
         document.getElementById('btn-cancelar-suspensao').addEventListener('click', fecharModalSuspensao);
 
+        // --- Listener do Select Condicional de Reuniões ---
+        document.querySelectorAll('input[name="tipoEscala"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const grupoDia = document.getElementById('grupoDiaReuniao');
+                if (grupoDia) grupoDia.style.display = (e.target.value === 'reuniao') ? 'block' : 'none';
+            });
+        });
+
         // --- Listeners de Submissão de Formulários ---
         document.getElementById('formCadastro').addEventListener('submit', (e) => {
             handleCadastroSubmit(e, auth, database);

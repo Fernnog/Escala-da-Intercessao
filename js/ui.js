@@ -13,6 +13,7 @@ const VISUAL_CONFIG = {
         'Domingo Manhã':       { cardClass: 'turno-domingo-manha', indicatorClass: 'indicator-domingo-manha' },
         'Domingo Noite':       { cardClass: 'turno-domingo-noite', indicatorClass: 'indicator-domingo-noite' },
         'Sábado':              { cardClass: 'turno-sabado', indicatorClass: 'indicator-sabado' },
+        'Reunião Online':      { cardClass: 'turno-reuniao', indicatorClass: 'indicator-reuniao' },
         'Oração no WhatsApp':  { cardClass: 'turno-oracao', indicatorClass: 'indicator-oracao' }
     },
     status: {
@@ -53,13 +54,13 @@ function atualizarListaMembros() {
         if (m.genero === 'M') maleCount++;
         else if (m.genero === 'F') femaleCount++;
         const susp = m.suspensao;
-        const isTotalmenteSuspenso = susp.cultos && susp.sabado && susp.whatsapp;
-        const isParcialmenteSuspenso = !isTotalmenteSuspenso && (susp.cultos || susp.sabado || susp.whatsapp);
+        const isTotalmenteSuspenso = susp.cultos && susp.reuniao && susp.whatsapp;
+        const isParcialmenteSuspenso = !isTotalmenteSuspenso && (susp.cultos || susp.reuniao || susp.whatsapp);
         let suspensaoTitle = '';
         if (isParcialmenteSuspenso) {
             let suspensoDe = [];
             if(susp.cultos) suspensoDe.push('Cultos');
-            if(susp.sabado) suspensoDe.push('Sábado');
+            if(susp.reuniao) suspensoDe.push('Reuniões');
             if(susp.whatsapp) suspensoDe.push('WhatsApp');
             suspensaoTitle = `Suspenso de: ${suspensoDe.join(', ')}`;
         } else if (isTotalmenteSuspenso) {
@@ -695,7 +696,7 @@ export function renderDisponibilidadeGeral() {
     const container = document.getElementById('disponibilidadeContainer');
     if (!container) return;
 
-    const turnos = ['Quarta', 'Domingo Manhã', 'Domingo Noite', 'Sábado', 'Oração no WhatsApp'];
+    const turnos = ['Quarta', 'Domingo Manhã', 'Domingo Noite', 'Reunião Online', 'Oração no WhatsApp'];
     
     let contentHTML = '';
     turnos.forEach(turno => {
@@ -707,7 +708,7 @@ export function renderDisponibilidadeGeral() {
             let isDisponivel = true;
             
             let suspensaoKey;
-            if (turno === 'Sábado') suspensaoKey = 'sabado';
+            if (turno === 'Reunião Online') suspensaoKey = 'reuniao';
             else if (turno === 'Oração no WhatsApp') suspensaoKey = 'whatsapp';
             else suspensaoKey = 'cultos';
 
@@ -800,7 +801,7 @@ window.atualizarPainelSuplentes = function(cardId) {
             let isRestrito = false;
 
             let suspKey = 'cultos'; 
-            if (dia.tipo === 'Sábado') suspKey = 'sabado';
+            if (dia.tipo === 'Reunião Online') suspKey = 'reuniao';
             else if (dia.tipo === 'Oração no WhatsApp') suspKey = 'whatsapp';
             
             if (m.suspensao && m.suspensao[suspKey]) {

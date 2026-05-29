@@ -22,8 +22,8 @@ export function checkMemberAvailability(membro, turno, data) {
     let tipoSuspencao;
     if (turno === 'Quarta' || turno.startsWith('Domingo')) {
         tipoSuspencao = 'cultos';
-    } else if (turno === 'Sábado') {
-        tipoSuspencao = 'sabado';
+    } else if (turno === 'Reunião Online') {
+        tipoSuspencao = 'reuniao';
     } else if (turno === 'Oração no WhatsApp') {
         tipoSuspencao = 'whatsapp';
     }

@@ -37,7 +37,7 @@ export function handleCadastroSubmit(e, auth, database) {
         nome,
         genero,
         conjuge: nomeConjuge,
-        suspensao: { cultos: false, sabado: false, whatsapp: false }
+        suspensao: { cultos: false, reuniao: false, whatsapp: false }
     });
     
     salvarDados(auth, database)
@@ -158,7 +158,7 @@ export function abrirModalSuspensao(index) {
     document.getElementById('membroIndexSuspensao').value = index;
     document.getElementById('modalTitle').textContent = `Gerenciar Suspensão: ${membro.nome}`;
     document.getElementById('suspenderCultos').checked = membro.suspensao.cultos;
-    document.getElementById('suspenderSabado').checked = membro.suspensao.sabado;
+    document.getElementById('suspenderReuniao').checked = membro.suspensao.reuniao;
     document.getElementById('suspenderWhatsapp').checked = membro.suspensao.whatsapp;
     document.getElementById('suspensaoModal').style.display = 'flex';
 }
@@ -173,7 +173,7 @@ export function salvarSuspensao(auth, database) {
     if (index === '' || !membros[index]) return;
 
     membros[index].suspensao.cultos = document.getElementById('suspenderCultos').checked;
-    membros[index].suspensao.sabado = document.getElementById('suspenderSabado').checked;
+    membros[index].suspensao.reuniao = document.getElementById('suspenderReuniao').checked;
     membros[index].suspensao.whatsapp = document.getElementById('suspenderWhatsapp').checked;
 
     salvarDados(auth, database)

@@ -122,10 +122,11 @@ export function setupGeradorEscala() {
         // Parâmetros do Form
         const tipoEscalaSelecionado = document.querySelector('input[name="tipoEscala"]:checked').value;
         const gerarCultos = tipoEscalaSelecionado === 'cultos';
-        const gerarSabado = tipoEscalaSelecionado === 'sabado';
+        const gerarReuniao = tipoEscalaSelecionado === 'reuniao';
         const gerarOração = tipoEscalaSelecionado === 'oracao';
         
         const quantidadeCultos = parseInt(document.getElementById('quantidadeCultos').value);
+        const diaReuniaoSelecionado = parseInt(document.getElementById('diaReuniao')?.value || 6);
         const mes = parseInt(document.getElementById('mesEscala').value);
         const ano = parseInt(document.getElementById('anoEscala').value);
 
@@ -171,7 +172,7 @@ export function setupGeradorEscala() {
                     dias.push({ data: new Date(d), selecionados: [], id: `dia-${uniqueIdCounter++}`, tipo: 'Domingo Noite' });
                 }
             }
-            if (gerarSabado && diaSemana === 6) dias.push({ ...diaInfoBase, tipo: 'Sábado' });
+            if (gerarReuniao && diaSemana === diaReuniaoSelecionado) dias.push({ ...diaInfoBase, tipo: 'Reunião Online' });
             if (gerarOração) dias.push({ ...diaInfoBase, tipo: 'Oração no WhatsApp' });
         }
 
@@ -239,7 +240,7 @@ export function setupGeradorEscala() {
             // ------------------------------------------------------------------
 
             // D. Seleção Final
-            const qtdNecessaria = (dia.tipo === 'Oração no WhatsApp' || dia.tipo === 'Sábado') ? 1 : quantidadeCultos;
+            const qtdNecessaria = (dia.tipo === 'Oração no WhatsApp' || dia.tipo === 'Reunião Online') ? 1 : quantidadeCultos;
             let selecionados = [];
 
             // Se temos gente suficiente após todos os filtros

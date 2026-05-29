@@ -98,7 +98,13 @@ export function carregarDados(auth, database, onDataLoaded) {
                 const membrosProcessados = (dados.membros || []).map(m => {
                     if (typeof m.suspensao !== 'object' || m.suspensao === null) {
                         const isSuspendedOld = !!m.suspenso;
-                        m.suspensao = { cultos: isSuspendedOld, sabado: isSuspendedOld, whatsapp: isSuspendedOld };
+                        m.suspensao = { cultos: isSuspendedOld, reuniao: isSuspendedOld, whatsapp: isSuspendedOld };
+                    } else {
+                        // MIGRATION: Se existir 'sabado', move para 'reuniao'
+                        if (typeof m.suspensao.sabado !== 'undefined') {
+                            m.suspensao.reuniao = m.suspensao.sabado;
+                            delete m.suspensao.sabado;
+                        }
                     }
                     return m;
                 });
@@ -110,7 +116,11 @@ export function carregarDados(auth, database, onDataLoaded) {
 
                 // Processa e preenche RESTRIÇÕES PERMANENTES
                 const restricoesPermProcessadas = dados.restricoesPermanentes || [];
-                restricoesPermProcessadas.forEach(restricao => restricoesPermanentes.push(restricao));
+                restricoesPermProcessadas.forEach(restricao => {
+                    // MIGRATION: Converte o nome da atividade permanentemente
+                    if (restricao.diaSemana === 'Sábado') restricao.diaSemana = 'Reunião Online';
+                    restricoesPermanentes.push(restricao);
+                });
                 
                 // =================================================================================
                 // === CORREÇÃO DE LEITURA DE DATAS (ROBUSTEZ AUMENTADA) ===

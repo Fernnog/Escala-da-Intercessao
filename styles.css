@@ -1,4 +1,11 @@
 :root {
+    --bg-page: #fdfbf7;
+    --color-primary: #1a1a1a; /* Preto refinado */
+    --color-accent: #c5a059;  /* Dourado */
+    --color-text: #333333;
+    --bg-panel: #ffffff;
+    --border-soft: #e0e0e0;
+
     --z-nav: 10;
     --z-side-panel: 900;
     --z-focus: 1500;
@@ -9,22 +16,22 @@
 /* Estilo geral do corpo */
 body {
     font-family: 'Roboto', sans-serif;
-    background: linear-gradient(to bottom, #ffebcc, #ffffff);
+    background: var(--bg-page);
     margin: 0;
     padding: 20px;
-    color: #1a3850;
+    color: var(--color-text);
 }
 
 /* ==========================================================================
    NOVO HEADER (Refinado e Otimizado - Prioridades 1, 2 e 3)
    ========================================================================== */
 header {
-    background: linear-gradient(to right, #fff9f2, #ffffff);
+    background: var(--bg-panel);
     padding: 10px 20px;
     margin-bottom: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    border-bottom: 3px solid #ff8c00;
+    border-bottom: 3px solid var(--color-accent);
 }
 
 .header-content {
@@ -126,45 +133,55 @@ header h2 {
 
 /* ========================================================================== */
 
-/* Navegação */
+/* Navegação - Refatorada para Scroll Mobile e Design Tokens */
 nav {
     position: sticky;
     top: 0;
     z-index: 10;
     display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    background-color: #4682b4;
-    padding: 15px;
-    border-radius: 8px;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 10px;
+    background-color: var(--color-primary);
+    padding: 10px;
+    border-radius: 6px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    scrollbar-width: none; /* Firefox */
+}
+
+nav::-webkit-scrollbar { 
+    display: none; /* Chrome/Safari */ 
 }
 
 nav button {
-    background: linear-gradient(45deg, #ff4500, #ff8c00);
-    color: white;
-    border: none;
-    padding: 14px 30px;
-    margin: 5px;
-    border-radius: 25px;
+    background: transparent;
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 12px 20px;
+    border-radius: 20px;
+    white-space: nowrap;
+    font-size: 16px;
     cursor: pointer;
-    font-size: 18px;
     font-weight: 500;
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition: all 0.3s ease;
 }
 
 nav button i {
     margin-right: 8px;
 }
 
-nav button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 15px rgba(255, 69, 0, 0.4);
+nav button:hover, nav button.active {
+    background: var(--color-accent);
+    color: var(--color-primary);
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(197, 160, 89, 0.3);
 }
 
 nav button:active {
-    transform: translateY(1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transform: translateY(0);
 }
 
 /* Abas */
@@ -1544,3 +1561,42 @@ body.focus-mode .side-panel {
     border: 1px solid #5a32a3;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
+
+/* ==========================================================================
+   ESTILOS DO MÓDULO DE OBSERVAÇÕES
+   ========================================================================== */
+.collapsible-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.collapsible-panel summary {
+    padding: 15px;
+    background: #f8f9fa;
+    font-weight: bold;
+    color: var(--color-primary);
+    cursor: pointer;
+    list-style: none;
+    transition: background 0.2s;
+}
+
+.collapsible-panel summary:hover { background: #f1f3f5; }
+.collapsible-panel summary::-webkit-details-marker { display: none; }
+.panel-content { padding: 20px; border-top: 1px solid var(--border-soft); }
+
+.filtros-box { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+.filtros-box .input-group { margin-top: 0; flex: 1; min-width: 200px; }
+
+.table-responsive { overflow-x: auto; }
+.styled-table {
+    width: 100%; border-collapse: collapse; background: var(--bg-panel);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden;
+}
+
+.styled-table th, .styled-table td { padding: 12px 15px; text-align: left; }
+.styled-table th { background-color: var(--color-primary); color: var(--color-accent); font-weight: 600; }
+.styled-table tbody tr { border-bottom: 1px solid var(--border-soft); transition: background 0.2s; }
+.styled-table tbody tr:hover { background-color: #fcfaf5; }

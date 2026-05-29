@@ -1,6 +1,6 @@
 // js/ui.js
 
-import { membros, restricoes, restricoesPermanentes, escalasSalvas } from './data-manager.js';
+import { membros, restricoes, restricoesPermanentes, escalasSalvas, observacoes } from './data-manager.js';
 import { saoCompativeis, checkMemberAvailability } from './availability.js';
 
 // =========================================================

@@ -2,14 +2,15 @@
 
 import { setupAuthListeners, handleLogout } from './auth.js';
 import { setupGeradorEscala } from './schedule-generator.js';
-import { carregarDados, salvarDados } from './data-manager.js';
+import { carregarDados, salvarDados, adicionarObservacao, excluirObservacao } from './data-manager.js';
 import {
     showTab,
     toggleConjuge,
     atualizarTodasAsListas,
     setupUiListeners,
     exportarEscalaXLSX,
-    renderDisponibilidadeGeral
+    renderDisponibilidadeGeral,
+    showToast
 } from './ui.js';
 import { setupSavedSchedulesListeners } from './saved-schedules-manager.js';
 import {
@@ -58,12 +59,23 @@ document.addEventListener('DOMContentLoaded', () => {
         window.excluirRestricao = (index) => excluirRestricao(index, auth, database);
         window.excluirRestricaoPermanente = (index) => excluirRestricaoPermanente(index, auth, database);
         window.abrirModalSuspensao = abrirModalSuspensao;
+        
+        window.excluirObservacaoUI = (id) => {
+            if(confirm('Tem certeza que deseja excluir esta observação?')) {
+                excluirObservacao(id);
+                salvarDados(auth, database).then(() => {
+                    showToast('Observação excluída.', 'success');
+                    atualizarTodasAsListas();
+                });
+            }
+        };
     }
 
     function setupEventListeners() {
         
         // --- Listeners da Barra de Navegação ---
         document.getElementById('nav-cadastro').addEventListener('click', () => showTab('cadastro'));
+        document.getElementById('nav-observacoes').addEventListener('click', () => showTab('observacoes'));
         document.getElementById('nav-disponibilidade').addEventListener('click', () => {
             showTab('disponibilidade');
             renderDisponibilidadeGeral();
@@ -110,6 +122,30 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('formRestricaoPermanente').addEventListener('submit', (e) => {
             handleRestricaoPermanenteSubmit(e, auth, database);
         });
+
+        // --- Listeners do Módulo de Observações ---
+        const formObs = document.getElementById('formObservacao');
+        if (formObs) {
+            formObs.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const membro = document.getElementById('obsMembroSelect').value;
+                const texto = document.getElementById('obsTexto').value;
+
+                adicionarObservacao({ membro, texto });
+                
+                salvarDados(auth, database).then(() => {
+                    showToast('Observação salva com sucesso!', 'success');
+                    atualizarTodasAsListas(); 
+                    e.target.reset();
+                    document.querySelector('.collapsible-panel').removeAttribute('open');
+                });
+            });
+        }
+
+        const filtroObsTexto = document.getElementById('filtroObsTexto');
+        const filtroObsMembro = document.getElementById('filtroObsMembro');
+        if (filtroObsTexto) filtroObsTexto.addEventListener('input', () => window.atualizarListaObservacoes && window.atualizarListaObservacoes());
+        if (filtroObsMembro) filtroObsMembro.addEventListener('change', () => window.atualizarListaObservacoes && window.atualizarListaObservacoes());
     }
 
     // --- INICIALIZAÇÃO DA APLICAÇÃO ---

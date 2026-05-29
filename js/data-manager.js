@@ -5,6 +5,7 @@ export let membros = [];
 export let restricoes = [];
 export let restricoesPermanentes = [];
 export let escalasSalvas = [];
+export let observacoes = [];
 
 // --- FUNÇÕES DE MANIPULAÇÃO DO ESTADO LOCAL (CRUD) ---
 
@@ -50,6 +51,22 @@ export function atualizarNomeEscalaSalva(escalaId, novoNome) {
     }
 }
 
+export function adicionarObservacao(obs) {
+    const novaObs = {
+        // Fallback robusto para ID, caso crypto não esteja disponível
+        id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2, 9),
+        timestamp: Date.now(),
+        dataDisplay: new Date().toLocaleDateString('pt-BR'),
+        ...obs
+    };
+    observacoes.push(novaObs);
+}
+
+export function excluirObservacao(id) {
+    const index = observacoes.findIndex(o => o.id === id);
+    if (index > -1) observacoes.splice(index, 1);
+}
+
 // --- FUNÇÕES DE PERSISTÊNCIA DE DADOS (Firebase e Exportação) ---
 
 export function salvarDados(auth, database) {
@@ -75,7 +92,8 @@ export function salvarDados(auth, database) {
         membros: membros,
         restricoes: restricoes,
         restricoesPermanentes: restricoesPermanentes,
-        escalasSalvas: escalasParaSalvar
+        escalasSalvas: escalasParaSalvar,
+        observacoes: observacoes
     });
 }
 
@@ -90,6 +108,7 @@ export function carregarDados(auth, database, onDataLoaded) {
             restricoes.length = 0;
             restricoesPermanentes.length = 0;
             escalasSalvas.length = 0;
+            observacoes.length = 0;
 
             if (snapshot.exists()) {
                 const dados = snapshot.val();
@@ -121,6 +140,10 @@ export function carregarDados(auth, database, onDataLoaded) {
                     if (restricao.diaSemana === 'Sábado') restricao.diaSemana = 'Reunião Online';
                     restricoesPermanentes.push(restricao);
                 });
+
+                // Processa e preenche OBSERVAÇÕES
+                const obsProcessadas = dados.observacoes || [];
+                obsProcessadas.forEach(obs => observacoes.push(obs));
                 
                 // =================================================================================
                 // === CORREÇÃO DE LEITURA DE DATAS (ROBUSTEZ AUMENTADA) ===

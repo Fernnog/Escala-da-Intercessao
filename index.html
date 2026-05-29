@@ -134,7 +134,7 @@
                     <option value="Quarta">Quarta</option>
                     <option value="Domingo Manhã">Domingo Manhã</option>
                     <option value="Domingo Noite">Domingo Noite</option>
-                    <option value="Sábado">Sábado</option>
+                    <option value="Reunião Online">Reunião Online</option>
                 </select>
                 <label for="diaSemana">Dia da Semana</label>
             </div>
@@ -154,8 +154,20 @@
                 <label for="escalaCultos">Cultos (Quarta, Domingo Manhã e Noite)</label>
             </div>
             <div class="input-group">
-                <input type="radio" id="escalaSabado" name="tipoEscala" value="sabado">
-                <label for="escalaSabado">Reuniões Online (Sábado)</label>
+                <input type="radio" id="escalaReuniao" name="tipoEscala" value="reuniao">
+                <label for="escalaReuniao">Reuniões Online (Flexível)</label>
+            </div>
+            <div class="input-group" id="grupoDiaReuniao" style="display: none; margin-left: 30px;">
+                <select id="diaReuniao">
+                    <option value="1">Segunda-feira</option>
+                    <option value="2">Terça-feira</option>
+                    <option value="3">Quarta-feira</option>
+                    <option value="4">Quinta-feira</option>
+                    <option value="5">Sexta-feira</option>
+                    <option value="6" selected>Sábado</option>
+                    <option value="0">Domingo</option>
+                </select>
+                <label for="diaReuniao" style="position: static; transform: none; background: transparent; padding: 0; color: #ff8c00; font-size: 12px;">Selecione o dia da semana</label>
             </div>
             <div class="input-group">
                 <input type="radio" id="escalaOração" name="tipoEscala" value="oracao">
@@ -266,7 +278,7 @@
             <input type="hidden" id="membroIndexSuspensao">
             <div class="modal-options">
                 <div class="input-group"><input type="checkbox" id="suspenderCultos"><label for="suspenderCultos">Suspender de Cultos (Qua/Dom)</label></div>
-                <div class="input-group"><input type="checkbox" id="suspenderSabado"><label for="suspenderSabado">Suspender de Reuniões (Sáb)</label></div>
+                <div class="input-group"><input type="checkbox" id="suspenderReuniao"><label for="suspenderReuniao">Suspender de Reuniões Online</label></div>
                 <div class="input-group"><input type="checkbox" id="suspenderWhatsapp"><label for="suspenderWhatsapp">Suspender de Oração (WhatsApp)</label></div>
             </div>
             <div class="modal-actions">

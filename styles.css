@@ -1596,3 +1596,38 @@ body.focus-mode .side-panel {
 .styled-table th { background-color: var(--color-primary); color: var(--color-accent); font-weight: 600; }
 .styled-table tbody tr { border-bottom: 1px solid var(--border-soft); transition: background 0.2s; }
 .styled-table tbody tr:hover { background-color: #fcfaf5; }
+
+/* Componentes do Seletor de Tipo de Restrição */
+.radio-card-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+}
+.radio-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: 6px;
+    cursor: pointer;
+    background: #fff;
+    transition: all 0.2s;
+}
+.radio-card input[type="radio"] { margin-right: 10px; accent-color: currentColor; }
+.radio-card span { font-size: 0.9em; font-weight: bold; }
+
+.radio-card.danger:has(input:checked) { border-color: #dc3545; background-color: #fff5f5; color: #dc3545; }
+.radio-card.success:has(input:checked) { border-color: #28a745; background-color: #f6fff8; color: #28a745; }
+
+/* Badges Semânticos */
+.badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+    margin: 0 8px;
+    display: inline-block;
+}
+.badge-danger { background-color: #f8d7da; color: #721c24; }
+.badge-success { background-color: #d4edda; color: #155724; }

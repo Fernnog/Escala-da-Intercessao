@@ -110,9 +110,19 @@ function atualizarListaRestricoes() {
     const lista = document.getElementById('listaRestricoes');
     if(!lista) return;
     restricoes.sort((a, b) => a.membro.localeCompare(b.membro));
-    lista.innerHTML = restricoes.map((r, index) =>
-        `<li>${r.membro}: ${new Date(r.inicio).toLocaleDateString('pt-BR', {timeZone: 'UTC'})} a ${new Date(r.fim).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}
-        <button onclick="window.excluirRestricao(${index})">Excluir</button></li>`).join('');
+    lista.innerHTML = restricoes.map((r, index) => {
+        const isPermissao = r.tipo === 'permissao';
+        const badgeClass = isPermissao ? 'badge-success' : 'badge-danger';
+        const labelText = isPermissao ? 'Permitido Apenas' : 'Ausente';
+        return `<li>
+            <div>
+                <strong>${r.membro}</strong>
+                <span class="badge ${badgeClass}">${labelText}</span><br>
+                <small class="member-details">De ${new Date(r.inicio).toLocaleDateString('pt-BR', {timeZone: 'UTC'})} a ${new Date(r.fim).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</small>
+            </div>
+            <button onclick="window.excluirRestricao(${index})">Excluir</button>
+        </li>`;
+    }).join('');
 }
 
 function atualizarListaRestricoesPermanentes() {
@@ -482,7 +492,7 @@ export function renderRelatorioConflitos() {
                 switch (status.type) {
                     case 'suspenso': motivo = 'Suspensão Ativa'; break;
                     case 'permanente': motivo = 'Restrição Permanente'; break;
-                    case 'temporaria': motivo = 'Restrição Temporária (Data)'; break;
+                    case 'temporaria': motivo = status.motivo || 'Restrição Temporária (Data)'; break;
                 }
                 conflitos.push({
                     dia: dataKey,
@@ -800,33 +810,15 @@ window.atualizarPainelSuplentes = function(cardId) {
             const iconesStatus = [];
             let isRestrito = false;
 
-            let suspKey = 'cultos'; 
-            if (dia.tipo === 'Reunião Online') suspKey = 'reuniao';
-            else if (dia.tipo === 'Oração no WhatsApp') suspKey = 'whatsapp';
-            
-            if (m.suspensao && m.suspensao[suspKey]) {
-                iconesStatus.push('<i class="fas fa-pause-circle" style="color: #ffc107;" title="Suspenso"></i>');
+            const status = checkMemberAvailability(m, dia.tipo, dia.data);
+            if (status.type === 'suspenso') { iconesStatus.push('<i class="fas fa-pause-circle" style="color: #ffc107;" title="Suspenso"></i>'); isRestrito = true; }
+            else if (status.type === 'permanente') { iconesStatus.push('<span title="Restrição Permanente">⛔</span>'); isRestrito = true; }
+            else if (status.type === 'temporaria') {
+                const icone = status.motivo && status.motivo.includes('Permissão') ? '🔒' : '🚫';
+                iconesStatus.push(`<span title="${status.motivo || 'Restrição Temporária'}">${icone}</span>`);
                 isRestrito = true;
             }
-
-            if (todasAsRestricoesPerm.some(r => r.membro === m.nome && r.diaSemana === dia.tipo)) {
-                iconesStatus.push('<span title="Restrição Permanente">⛔</span>');
-                isRestrito = true;
-            }
-
-            const diaAlvo = new Date(dia.data); diaAlvo.setHours(0,0,0,0);
-            if (todasAsRestricoes.some(r => {
-                const inicio = new Date(r.inicio); inicio.setHours(0,0,0,0);
-                const fim = new Date(r.fim); fim.setHours(0,0,0,0);
-                return r.membro === m.nome && diaAlvo >= inicio && diaAlvo <= fim;
-            })) {
-                iconesStatus.push('<span title="Restrição Temporária">🚫</span>');
-                isRestrito = true;
-            }
-
-            if (iconesStatus.length === 0) {
-                iconesStatus.push('<i class="fas fa-check-circle" style="color:#28a745"></i>');
-            }
+            if (iconesStatus.length === 0) iconesStatus.push('<i class="fas fa-check-circle" style="color:#28a745" title="Disponível"></i>');
             
             return `
                 <li draggable="true" class="suplente-item ${isRestrito ? 'com-restricao' : ''}" data-nome="${m.nome}" title="${isRestrito ? 'Possui Restrições' : 'Disponível'}">
@@ -980,7 +972,7 @@ function remanejarMembro(nomeArrastado, nomeAlvo, cardOrigemId, cardAlvoId, sour
         let msg = '';
         if (status.type === 'suspenso') msg = `O membro <strong>${nomeArrastado}</strong> está marcado como SUSPENSO para ${diaAlvo.tipo}.`;
         else if (status.type === 'permanente') msg = `O membro <strong>${nomeArrastado}</strong> possui restrição permanente para ${diaAlvo.tipo}.`;
-        else if (status.type === 'temporaria') msg = `O membro <strong>${nomeArrastado}</strong> possui restrição de data (Férias/Ausência) no dia ${diaAlvo.data.toLocaleDateString()}.`;
+        else if (status.type === 'temporaria') msg = `O membro <strong>${nomeArrastado}</strong> possui restrição: <strong>${status.motivo || 'data indisponível'}</strong>.`;
 
         const modal = document.getElementById('modalConfirmacaoForce');
         document.getElementById('msgRestricaoForce').innerHTML = msg;

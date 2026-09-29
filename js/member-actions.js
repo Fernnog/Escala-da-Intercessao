@@ -62,20 +62,21 @@ export function handleRestricaoSubmit(e, auth, database) {
     const membro = document.getElementById('membroRestricao').value;
     const dataInicioStr = document.getElementById('dataInicio').value;
     const dataFimStr = document.getElementById('dataFim').value;
+    const tipo = document.querySelector('input[name="tipoRegraTemp"]:checked').value;
+
+    // Proteção de Timezone (Fixação ao meio-dia UTC)
     const inicio = new Date(dataInicioStr + 'T12:00:00');
     const fim = new Date(dataFimStr + 'T12:00:00');
 
     if (!membro) { showToast('Selecione um membro!', 'warning'); return; }
     if (fim < inicio) { showToast('A data de fim deve ser posterior à data de início!', 'error'); return; }
 
-    adicionarRestricao({ membro, inicio: inicio.toISOString(), fim: fim.toISOString() });
+    adicionarRestricao({ membro, inicio: inicio.toISOString(), fim: fim.toISOString(), tipo });
     
-    salvarDados(auth, database)
-        .then(() => {
-            atualizarTodasAsListas();
-            showToast('Restrição temporária registrada.', 'success');
-        })
-        .catch(err => showToast(`Erro ao salvar restrição: ${err.message}`, 'error'));
+    salvarDados(auth, database).then(() => {
+        atualizarTodasAsListas();
+        showToast('Regra registrada com sucesso.', 'success');
+    }).catch(err => showToast(`Erro ao salvar regra: ${err.message}`, 'error'));
     
     e.target.reset();
 }

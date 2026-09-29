@@ -144,6 +144,18 @@
                 </select>
                 <label for="membroRestricao">Membro</label>
             </div>
+            
+            <div class="radio-card-group">
+                <label class="radio-card danger">
+                    <input type="radio" id="tipoBloqueio" name="tipoRegraTemp" value="bloqueio" checked>
+                    <span>⛔ Ausente neste período</span>
+                </label>
+                <label class="radio-card success">
+                    <input type="radio" id="tipoPermissao" name="tipoRegraTemp" value="permissao">
+                    <span>✅ Disponível APENAS neste período</span>
+                </label>
+            </div>
+            
             <div class="input-group">
                 <input type="date" id="dataInicio" required placeholder=" ">
                 <label for="dataInicio">Data Início</label>

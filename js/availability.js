@@ -39,23 +39,43 @@ export function checkMemberAvailability(membro, turno, data) {
         return { type: 'permanente' };
     }
 
-    // 3. Verificar Restrição Temporária (apenas se uma data for fornecida)
+    // 3. Verificar Restrições Temporárias (Blocklist e Allowlist)
     if (data) {
         const diaAtual = new Date(data);
-        diaAtual.setHours(0, 0, 0, 0); // Normaliza para ignorar a hora
+        diaAtual.setHours(0, 0, 0, 0);
+        const restricoesMembro = restricoes.filter(r => r.membro === membro.nome);
+        
+        // --- A: ALLOWLIST (Permissão Exclusiva) ---
+        const permissoes = restricoesMembro.filter(r => r.tipo === 'permissao');
+        if (permissoes.length > 0) {
+            const mesAbsolutoAtual = (diaAtual.getFullYear() * 12) + diaAtual.getMonth();
+            
+            const mesPossuiAllowlistAtiva = permissoes.some(r => {
+                const rIn = new Date(r.inicio); const rFim = new Date(r.fim);
+                const mesAbsIn = (rIn.getFullYear() * 12) + rIn.getMonth();
+                const mesAbsFim = (rFim.getFullYear() * 12) + rFim.getMonth();
+                return mesAbsolutoAtual >= mesAbsIn && mesAbsolutoAtual <= mesAbsFim;
+            });
 
-        const temRestricaoTemp = restricoes.some(r => {
-            const rInicio = new Date(r.inicio);
-            rInicio.setHours(0, 0, 0, 0);
-            const rFim = new Date(r.fim);
-            rFim.setHours(0, 0, 0, 0);
+            if (mesPossuiAllowlistAtiva) {
+                const dataCoberta = permissoes.some(r => {
+                    const rIn = new Date(r.inicio); rIn.setHours(0,0,0,0);
+                    const rFim = new Date(r.fim); rFim.setHours(0,0,0,0);
+                    return diaAtual >= rIn && diaAtual <= rFim;
+                });
+                if (!dataCoberta) return { type: 'temporaria', motivo: 'Fora do período de Permissão Exclusiva' };
+            }
+        }
 
-            return r.membro === membro.nome && diaAtual >= rInicio && diaAtual <= rFim;
+        // --- B: BLOCKLIST (Ausência Padrão) ---
+        const bloqueios = restricoesMembro.filter(r => !r.tipo || r.tipo === 'bloqueio');
+        const temBloqueio = bloqueios.some(r => {
+            const rInicio = new Date(r.inicio); rInicio.setHours(0, 0, 0, 0);
+            const rFim = new Date(r.fim); rFim.setHours(0, 0, 0, 0);
+            return diaAtual >= rInicio && diaAtual <= rFim;
         });
 
-        if (temRestricaoTemp) {
-            return { type: 'temporaria' };
-        }
+        if (temBloqueio) return { type: 'temporaria', motivo: 'Ausência registrada (Férias/Viagem)' };
     }
 
     // 4. Se passou por todas as verificações, está disponível.

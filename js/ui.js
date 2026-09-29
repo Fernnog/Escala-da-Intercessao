@@ -2,6 +2,7 @@
 
 import { membros, restricoes, restricoesPermanentes, escalasSalvas, observacoes } from './data-manager.js';
 import { saoCompativeis, checkMemberAvailability } from './availability.js';
+import { calculateParticipationData } from './utils.js';
 
 // =========================================================
 // === SEÇÃO DE CONFIGURAÇÃO E ESTADO ===
@@ -591,14 +592,6 @@ export function renderEscalaEmCards(dias) {
     });
 
     aplicarFeedbackFadiga(diasValidos);
-
-    if (diasValidos.length > 0) {
-        setTimeout(() => {
-            if (typeof window.atualizarPainelSuplentes === 'function') {
-                window.atualizarPainelSuplentes(diasValidos[0].id);
-            }
-        }, 100);
-    }
 }
 
 export function aplicarFeedbackFadiga(dias) {
@@ -853,13 +846,9 @@ window.limparVaga = function(diaId, index) {
 
     const membroRemovido = dia.selecionados[index];
 
-    if (membroRemovido.nome && !membroRemovido.isConvidado && !membroRemovido.isVaga) {
-        if (justificationDataAtual[membroRemovido.nome]) {
-            justificationDataAtual[membroRemovido.nome].participations--;
-        }
-    }
-
     dia.selecionados[index] = { nome: null, isVaga: true, genero: null };
+
+    justificationDataAtual = calculateParticipationData(escalaAtual, membros);
 
     renderEscalaEmCards(escalaAtual);
     exibirIndiceEquilibrio(justificationDataAtual);
@@ -895,6 +884,9 @@ window.confirmarAdicaoExterno = function() {
             isConvidado: true,
             genero: 'X' 
         };
+        
+        justificationDataAtual = calculateParticipationData(escalaAtual, membros);
+        
         renderEscalaEmCards(escalaAtual);
         exibirIndiceEquilibrio(justificationDataAtual);
 
@@ -925,10 +917,7 @@ function _executarTroca(nomeArrastado, nomeAlvo, diaAlvo, indexAlvo, isFromSuple
 
     diaAlvo.selecionados[indexAlvo] = membroArrastadoObj;
 
-    if (justificationDataAtual[nomeArrastado]) justificationDataAtual[nomeArrastado].participations++;
-    if (nomeAlvo && !diaAlvo.selecionados[indexAlvo].isVaga && justificationDataAtual[nomeAlvo]) {
-        justificationDataAtual[nomeAlvo].participations--;
-    }
+    justificationDataAtual = calculateParticipationData(escalaAtual, membros);
 
     renderEscalaEmCards(escalaAtual);
     exibirIndiceEquilibrio(justificationDataAtual);

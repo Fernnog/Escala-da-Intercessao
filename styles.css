@@ -1631,3 +1631,42 @@ body.focus-mode .side-panel {
 }
 .badge-danger { background-color: #f8d7da; color: #721c24; }
 .badge-success { background-color: #d4edda; color: #155724; }
+
+/* ================ EFEITO RAIO-X (VISÃO GLOBAL) ================ */
+.escala-container.has-highlight .escala-card {
+    transition: opacity 0.3s ease, transform 0.3s ease, filter 0.3s ease;
+}
+
+.escala-container.has-highlight .escala-card:not(.has-member) {
+    opacity: 0.35;
+    transform: scale(0.98);
+    filter: grayscale(80%);
+    pointer-events: none; /* Evita interações acidentais em cards ofuscados */
+}
+
+.membro-card.highlighted-member {
+    background: linear-gradient(45deg, #ffc107, #ff9800) !important;
+    color: #fff !important;
+    border: none !important;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+    z-index: 10;
+}
+
+.suplente-item.selected-in-panel {
+    background-color: #e3f2fd !important;
+    border-left: 4px solid #2196f3 !important;
+}
+
+.suplente-item.visao-global-item {
+    cursor: pointer;
+}
+.suplente-item.visao-global-item:hover {
+    background-color: #f8f9fa;
+}
+.drag-handle {
+    cursor: grab;
+    color: #adb5bd;
+    margin-right: 8px;
+    padding: 2px 5px;
+}

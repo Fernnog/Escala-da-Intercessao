@@ -223,6 +223,16 @@ export function setupUiListeners() {
         });
     }
 
+    const btnVisaoGlobal = document.getElementById('btn-visao-global');
+    if (btnVisaoGlobal) {
+        btnVisaoGlobal.addEventListener('click', () => {
+            window.renderizarPainelGlobal();
+            document.querySelectorAll('.escala-card').forEach(c => {
+                c.style.borderColor = ''; c.style.boxShadow = ''; c.style.transform = ''; c.style.zIndex = '';
+            });
+        });
+    }
+
     const buscaInput = document.getElementById('buscaSuplente');
     if(buscaInput) {
         buscaInput.addEventListener('input', (e) => {
@@ -759,13 +769,22 @@ export function renderDisponibilidadeGeral() {
 // =========================================================================
 
 window.atualizarPainelSuplentes = function(cardId) {
-    diaSelecionadoId = cardId;
+    window.diaSelecionadoId = cardId;
+    
+    // GATILHO DE CICLO DE VIDA: Limpa visualização global ao entrar na visão de um dia
+    limparRealceMembros();
+
     const dia = escalaAtual.find(d => d.id === cardId);
     if (!dia) return;
 
     const painel = document.getElementById('painelSuplentes');
     const lista = document.getElementById('listaSuplentes');
     const contexto = document.getElementById('painel-contexto');
+    const titulo = document.getElementById('titulo-painel');
+    const btnGlobal = document.getElementById('btn-visao-global');
+
+    if(titulo) titulo.innerHTML = '<i class="fas fa-exchange-alt"></i> Substituição';
+    if(btnGlobal) btnGlobal.style.display = 'block';
 
     document.querySelectorAll('.escala-card').forEach(c => {
         c.style.borderColor = '';
@@ -1029,3 +1048,93 @@ export function configurarDragAndDrop(dias, justificationData, restricoes, restr
         });
     });
 }
+
+// =========================================================
+// === EFEITO RAIO-X E VISÃO GLOBAL ===
+// =========================================================
+
+export let membroRealcadoAtual = null;
+
+export function limparRealceMembros() {
+    membroRealcadoAtual = null;
+    const container = document.getElementById('resultadoEscala');
+    if (container) container.classList.remove('has-highlight');
+    
+    document.querySelectorAll('.escala-card').forEach(c => c.classList.remove('has-member'));
+    document.querySelectorAll('.membro-card.highlighted-member').forEach(c => c.classList.remove('highlighted-member'));
+    document.querySelectorAll('.suplente-item.selected-in-panel').forEach(c => c.classList.remove('selected-in-panel'));
+}
+
+export function alternarRealceMembro(nome) {
+    if (membroRealcadoAtual === nome) {
+        limparRealceMembros();
+        return;
+    }
+    
+    limparRealceMembros();
+    membroRealcadoAtual = nome;
+
+    const container = document.getElementById('resultadoEscala');
+    if(container) container.classList.add('has-highlight');
+
+    document.querySelectorAll('.escala-card').forEach(card => {
+        const membroCard = card.querySelector(`.membro-card[data-nome="${nome}"]`);
+        if (membroCard) {
+            card.classList.add('has-member');
+            membroCard.classList.add('highlighted-member');
+        }
+    });
+
+    const listItem = document.querySelector(`.suplente-item[data-nome="${nome}"]`);
+    if(listItem) listItem.classList.add('selected-in-panel');
+}
+
+window.alternarRealceMembro = alternarRealceMembro; 
+
+export function renderizarPainelGlobal() {
+    const painel = document.getElementById('painelSuplentes');
+    const lista = document.getElementById('listaSuplentes');
+    const contexto = document.getElementById('painel-contexto');
+    const titulo = document.getElementById('titulo-painel');
+    const btnGlobal = document.getElementById('btn-visao-global');
+
+    if(!painel) return;
+
+    limparRealceMembros();
+    window.diaSelecionadoId = null;
+
+    titulo.innerHTML = '<i class="fas fa-users"></i> Visão Global';
+    contexto.textContent = "Clique em um membro para destacar seus turnos. Arraste para a escala se necessário.";
+    btnGlobal.style.display = 'none'; 
+    painel.style.display = 'block';
+
+    const sugestoes = [...membros].sort((a, b) => {
+        const partsA = justificationDataAtual[a.nome] ? justificationDataAtual[a.nome].participations : 0;
+        const partsB = justificationDataAtual[b.nome] ? justificationDataAtual[b.nome].participations : 0;
+        return partsB - partsA;
+    });
+
+    if(lista) {
+        lista.innerHTML = sugestoes.map(m => {
+            const parts = justificationDataAtual[m.nome] ? justificationDataAtual[m.nome].participations : 0;
+            return `
+                <li draggable="true" class="suplente-item visao-global-item" data-nome="${m.nome}" onclick="window.alternarRealceMembro('${m.nome}')">
+                    <span style="display: flex; align-items: center;">
+                        <i class="fas fa-grip-vertical drag-handle" title="Arraste para a escala"></i>
+                        ${m.nome}
+                    </span>
+                    <span class="suplente-badge ${parts <= 1 ? 'low-part' : ''}">${parts}x</span>
+                </li>
+            `;
+        }).join('');
+        
+        const items = lista.querySelectorAll('.suplente-item');
+        items.forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', item.dataset.nome);
+                e.dataTransfer.setData('source-type', 'suplente'); 
+            });
+        });
+    }
+}
+window.renderizarPainelGlobal = renderizarPainelGlobal;

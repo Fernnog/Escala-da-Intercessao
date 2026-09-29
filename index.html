@@ -263,18 +263,22 @@
 
             <aside id="painelSuplentes" class="side-panel" style="display: none;">
                 <div class="panel-header">
-                    <h4><i class="fas fa-users"></i> Banco de Suplentes</h4>
-                    <button id="btn-fechar-painel" class="close-panel" title="Fechar painel">&times;</button>
+                    <h4><i class="fas fa-users"></i> <span id="titulo-painel">Visão Global</span></h4>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button id="btn-visao-global" class="btn-icone-ajuda" style="position: static; display: none; padding: 4px 8px;" title="Voltar para Visão Global">
+                            <i class="fas fa-globe"></i> Global
+                        </button>
+                        <button id="btn-fechar-painel" class="close-panel" title="Fechar painel">&times;</button>
+                    </div>
                 </div>
                 <div class="panel-context">
-                    <p id="painel-contexto">Selecione um dia na escala...</p>
+                    <p id="painel-contexto">Resumo de toda a escala gerada.</p>
                 </div>
                 <div class="input-group search-sm" style="margin-top: 10px; margin-bottom: 10px;">
                     <input type="text" id="buscaSuplente" placeholder="Filtrar por nome...">
                     <label for="buscaSuplente"><i class="fas fa-search"></i></label>
                 </div>
-                <ul id="listaSuplentes" class="suplentes-list">
-                    </ul>
+                <ul id="listaSuplentes" class="suplentes-list"></ul>
             </aside>
 
         </div>

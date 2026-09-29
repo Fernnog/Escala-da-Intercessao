@@ -119,6 +119,8 @@ export function setupGeradorEscala() {
             balanceContainer.onclick = null;
         }
 
+        if (window.limparRealceMembros) window.limparRealceMembros();
+
         // Parâmetros do Form
         const tipoEscalaSelecionado = document.querySelector('input[name="tipoEscala"]:checked').value;
         const gerarCultos = tipoEscalaSelecionado === 'cultos';
@@ -294,6 +296,8 @@ export function setupGeradorEscala() {
         renderizarFiltros(dias, analisarConcentracao(dias));
         configurarDragAndDrop(dias, justificationData, restricoes, restricoesPermanentes);
         exibirIndiceEquilibrio(justificationData);
+        
+        if (window.renderizarPainelGlobal) window.renderizarPainelGlobal();
         
         if (gerarCultos) {
             renderAnaliseConcentracao('all'); 
